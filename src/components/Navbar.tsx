@@ -201,11 +201,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Mobile Navigation Tabs Bar */}
-        <div className="flex md:hidden items-center justify-between gap-1 py-2 border-t border-slate-800 overflow-x-auto">
+        <div className="flex md:hidden items-center justify-between gap-1 py-2 border-t border-slate-200 dark:border-slate-800 overflow-x-auto custom-scrollbar">
           <button
             onClick={() => setActiveTab('grid')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap ${
-              activeTab === 'grid' ? 'bg-blue-600 text-white' : 'text-slate-300'
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-colors ${
+              activeTab === 'grid' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -214,8 +214,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={() => setActiveTab('kanban')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap ${
-              activeTab === 'kanban' ? 'bg-blue-600 text-white' : 'text-slate-300'
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-colors ${
+              activeTab === 'kanban' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Kanban className="w-3.5 h-3.5" />
@@ -224,8 +224,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={() => setActiveTab('timeline')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap ${
-              activeTab === 'timeline' ? 'bg-blue-600 text-white' : 'text-slate-300'
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-colors ${
+              activeTab === 'timeline' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
@@ -234,8 +234,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap ${
-              activeTab === 'analytics' ? 'bg-blue-600 text-white' : 'text-slate-300'
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-colors ${
+              activeTab === 'analytics' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <BarChart3 className="w-3.5 h-3.5" />
@@ -244,8 +244,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={() => setActiveTab('messages')}
-            className={`relative flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap ${
-              activeTab === 'messages' ? 'bg-blue-600 text-white' : 'text-slate-300'
+            className={`relative flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-colors ${
+              activeTab === 'messages' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <MessageSquare className="w-3.5 h-3.5" />
