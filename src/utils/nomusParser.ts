@@ -152,6 +152,12 @@ export function parseNomusNumber(valStr: string): number {
   return isNaN(num) ? 0 : num;
 }
 
+function isCodeString(str: string): boolean {
+  if (!str) return false;
+  const s = str.trim();
+  return /^\d{2,4}[\.\-]\d{2,4}$/.test(s) || /^\d{3,6}$/.test(s);
+}
+
 export function sanitizeOrderQuantity(order: ProductionOrder): ProductionOrder {
   let q = order.quantidade;
   let qp = order.qtde_produzida;
@@ -169,10 +175,24 @@ export function sanitizeOrderQuantity(order: ProductionOrder): ProductionOrder {
     qp = q;
   }
 
-  const unidade = normalizeUnidade(order.unidade, order.descricao);
+  let desc = order.descricao || '';
+  let cod = order.codigo || '';
+
+  // If description was mistakenly set to a code string like "020.0031" and code has description or is empty
+  if (isCodeString(desc)) {
+    if (cod && !isCodeString(cod) && cod !== '—') {
+      const tmp = desc;
+      desc = cod;
+      cod = tmp;
+    }
+  }
+
+  const unidade = normalizeUnidade(order.unidade, desc);
 
   return {
     ...order,
+    descricao: desc,
+    codigo: cod,
     quantidade: q,
     qtde_produzida: qp,
     unidade,
@@ -201,7 +221,11 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
   // Inspect headers dynamically
   for (const row of rows) {
     const headerCells = Array.from(row.querySelectorAll('th, td')).map((x) =>
-      (x.textContent || '').trim().toLowerCase()
+      (x.textContent || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase()
     );
     const headerText = headerCells.join(' ');
 
@@ -210,13 +234,13 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
       (headerText.includes('descri') || headerText.includes('produto') || headerText.includes('item'))
     ) {
       headerCells.forEach((text, idx) => {
-        if (text.includes('entrega') || text.includes('previsão') || text === 'data') colMap.dt = idx;
-        else if (text.includes('status') || text.includes('situação')) colMap.status = idx;
+        if (text.includes('entrega') || text.includes('previsao') || text === 'data') colMap.dt = idx;
+        else if (text.includes('status') || text.includes('situacao')) colMap.status = idx;
         else if (text.includes('descri') || text.includes('produto') || text.includes('item')) colMap.desc = idx;
-        else if (text.includes('cód') || text.includes('cod')) colMap.cod = idx;
+        else if (text.includes('cod') || text.includes('codigo')) colMap.cod = idx;
         else if (text.includes('lote')) colMap.lote = idx;
         else if (text.includes('obs') || text.includes('observa')) colMap.obs = idx;
-        else if (text.includes('op') || text.includes('ordem')) colMap.op = idx;
+        else if ((text.includes('op') || text.includes('ordem')) && !text.includes('entrega')) colMap.op = idx;
         else if (text.includes('um') || text.includes('u.m') || text.includes('unidade') || text.includes('unid')) colMap.um = idx;
         else if (text.includes('produz') || text.includes('execut')) colMap.qtdeP = idx;
         else if (text.includes('qtde') || text.includes('quant') || text.includes('qtd')) colMap.qtde = idx;
@@ -241,7 +265,7 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
 
     // Check if header row
     const rowText = cells.join(' ').toLowerCase();
-    if (rowText.includes('status') && rowText.includes('descrição') && rowText.includes('ordem')) {
+    if (rowText.includes('status') && (rowText.includes('descri') || rowText.includes('produto')) && (rowText.includes('ordem') || rowText.includes('op'))) {
       continue;
     }
 
@@ -256,6 +280,20 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
     let qtdePStr = colMap.qtdeP !== -1 ? cells[colMap.qtdeP] || '0' : cells[8] || '0';
     let umRaw = colMap.um !== -1 ? cells[colMap.um] || '' : '';
 
+    // If desc is a code like "020.0031" and cod is a text description or empty, swap/fix them!
+    if (isCodeString(desc) && cod && !isCodeString(cod)) {
+      const temp = desc;
+      desc = cod;
+      cod = temp;
+    } else if (isCodeString(desc) && !cod) {
+      // Find text cell in row for description
+      const textCell = cells.find((c) => c && c.length > 5 && !isCodeString(c) && !c.toUpperCase().includes('OP ') && !c.includes('/'));
+      if (textCell) {
+        cod = desc;
+        desc = textCell;
+      }
+    }
+
     // If OP column not identified properly, search for cell starting with OP
     if (!op || !op.toUpperCase().includes('OP')) {
       const opIndex = cells.findIndex(
@@ -266,8 +304,12 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
       );
       if (opIndex !== -1) {
         op = cells[opIndex];
-        if (opIndex > 0) qtdeStr = cells[opIndex + 1] || qtdeStr;
-        if (opIndex > 1) qtdePStr = cells[opIndex + 2] || qtdePStr;
+        if (opIndex + 1 < cells.length && parseNomusNumber(cells[opIndex + 1]) > 0) {
+          qtdeStr = cells[opIndex + 1];
+        }
+        if (opIndex + 2 < cells.length && parseNomusNumber(cells[opIndex + 2]) >= 0) {
+          qtdePStr = cells[opIndex + 2];
+        }
       }
     }
 
@@ -282,8 +324,8 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
 
     if (dt) lastDate = dt;
     if (st) lastStatus = st;
-    if (desc) lastDesc = desc;
-    if (cod) lastCod = cod;
+    if (desc && !isCodeString(desc)) lastDesc = desc;
+    if (cod && isCodeString(cod)) lastCod = cod;
 
     const currentNomusStatus = st || lastStatus;
     const nomusKey = currentNomusStatus.toLowerCase().trim();
@@ -308,7 +350,8 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
 
     const q = parseNomusNumber(qtdeStr);
     const qp = parseNomusNumber(qtdePStr);
-    const finalDesc = desc || lastDesc || 'Sem descrição';
+    const finalDesc = (desc && !isCodeString(desc)) ? desc : (lastDesc || 'Sem descrição');
+    const finalCod = (cod && isCodeString(cod)) ? cod : (lastCod || '—');
     const unidad = normalizeUnidade(umRaw, finalDesc);
 
     const opClean = op.replace(/\s+/g, ' ').trim();
@@ -318,7 +361,7 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
       id: opId,
       numero: opClean,
       descricao: finalDesc,
-      codigo: cod || lastCod || '—',
+      codigo: finalCod,
       lote: lote || '',
       observacao: obs || '',
       data_entrega: deliveryDateStr || '',
