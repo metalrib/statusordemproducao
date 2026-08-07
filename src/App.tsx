@@ -18,6 +18,7 @@ import { ChatMessage, OrderStatusKey, ProductionOrder, Role, CategoryKey } from 
 import { CATEGORIES, MANUAL_STATUS, S_ORDER, STATUS_CONFIG } from './constants';
 import { storage } from './utils/storage';
 import { SAMPLE_ORDERS } from './data/sampleOrders';
+import { sanitizeOrderQuantity } from './utils/nomusParser';
 import {
   subscribeToOrders,
   subscribeToMessages,
@@ -83,8 +84,9 @@ export default function App() {
     // Subscribe to real-time Firestore updates
     const unsubscribeOrders = subscribeToOrders((remoteOrders) => {
       if (remoteOrders && remoteOrders.length > 0) {
-        setOrders(remoteOrders);
-        storage.saveOrders(remoteOrders);
+        const cleaned = remoteOrders.map(sanitizeOrderQuantity);
+        setOrders(cleaned);
+        storage.saveOrders(cleaned);
       }
     });
 

@@ -80,6 +80,75 @@ export function daysInfo(dateStr: string): { text: string; color: string; days: 
   };
 }
 
+export function parseNomusNumber(valStr: string): number {
+  if (!valStr) return 0;
+  let str = valStr.trim();
+  if (!str) return 0;
+
+  // Remove currency, spaces, or extra non-numeric characters keeping digits, dot, comma, minus
+  str = str.replace(/[^0-9.,-]/g, '');
+  if (!str) return 0;
+
+  const hasDot = str.includes('.');
+  const hasComma = str.includes(',');
+
+  if (hasDot && hasComma) {
+    const lastDot = str.lastIndexOf('.');
+    const lastComma = str.lastIndexOf(',');
+    if (lastComma > lastDot) {
+      // Brazilian format: 1.250,00 -> dot is thousands, comma is decimal
+      str = str.replace(/\./g, '').replace(',', '.');
+    } else {
+      // US format: 1,250.00
+      str = str.replace(/,/g, '');
+    }
+  } else if (hasComma) {
+    // e.g. "4,000" or "4,00" or "100,00" -> comma is decimal point in BR
+    str = str.replace(',', '.');
+  } else if (hasDot) {
+    // e.g. "4.000" or "4.00" or "2.000" or "100.000" or "1.000.000"
+    const dotCount = (str.match(/\./g) || []).length;
+    if (dotCount > 1) {
+      // Multiple dots e.g. 1.000.000 -> thousand separators
+      str = str.replace(/\./g, '');
+    } else {
+      // Single dot: e.g. "4.000", "2.000", "1.000" -> in Nomus exports single dot represents decimals
+      // parseFloat("4.000") = 4, parseFloat("2.000") = 2, parseFloat("1.000") = 1
+    }
+  }
+
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+}
+
+export function sanitizeOrderQuantity(order: ProductionOrder): ProductionOrder {
+  let q = order.quantidade;
+  let qp = order.qtde_produzida;
+
+  // Auto-correct previously parsed corrupt values like 1000, 2000, 4000, 400, 100
+  if (q >= 1000 && q % 1000 === 0) {
+    q = q / 1000;
+  } else if (q >= 100 && q % 100 === 0 && q < 1000) {
+    q = q / 100;
+  }
+
+  if (qp >= 1000 && qp % 1000 === 0) {
+    qp = qp / 1000;
+  } else if (qp >= 100 && qp % 100 === 0 && qp < 1000 && qp > q) {
+    qp = qp / 100;
+  }
+
+  if (qp > q) {
+    qp = q;
+  }
+
+  return {
+    ...order,
+    quantidade: q,
+    qtde_produzida: qp,
+  };
+}
+
 export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]; rawCount: number } {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlContent, 'text/html');
@@ -172,13 +241,13 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
       }
     }
 
-    const q = parseFloat((qtdeStr || '0').replace(/\./g, '').replace(',', '.')) || 0;
-    const qp = parseFloat((qtdePStr || '0').replace(/\./g, '').replace(',', '.')) || 0;
+    const q = parseNomusNumber(qtdeStr);
+    const qp = parseNomusNumber(qtdePStr);
 
     const opClean = op.replace(/\s+/g, ' ').trim();
     const opId = opClean.replace(/\s+/g, '-').replace('/', '-');
 
-    orders.push({
+    const newOrder: ProductionOrder = {
       id: opId,
       numero: opClean,
       descricao: desc || lastDesc || 'Sem descrição',
@@ -196,7 +265,9 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
       pausada: false,
       prioridade: calculatedStatus === 'atrasada' ? 'alta' : 'media',
       data_atualizacao: new Date().toISOString(),
-    });
+    };
+
+    orders.push(sanitizeOrderQuantity(newOrder));
   }
 
   return { orders, rawCount };

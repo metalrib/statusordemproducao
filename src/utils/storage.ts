@@ -1,5 +1,6 @@
 import { ChatMessage, ProductionOrder } from '../types';
 import { SAMPLE_ORDERS } from '../data/sampleOrders';
+import { sanitizeOrderQuantity } from './nomusParser';
 
 const ORDERS_STORAGE_KEY = 'metalrib_pcp_orders_v2';
 const MESSAGES_STORAGE_KEY = 'metalrib_pcp_messages_v2';
@@ -13,13 +14,13 @@ export const storage = {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return parsed.map(sanitizeOrderQuantity);
         }
       }
     } catch (e) {
       console.error('Error reading orders from localStorage', e);
     }
-    return SAMPLE_ORDERS;
+    return SAMPLE_ORDERS.map(sanitizeOrderQuantity);
   },
 
   saveOrders(orders: ProductionOrder[]): void {
