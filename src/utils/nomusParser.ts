@@ -152,10 +152,33 @@ export function parseNomusNumber(valStr: string): number {
   return isNaN(num) ? 0 : num;
 }
 
+const INVALID_DESC_KEYWORDS = [
+  'liberada',
+  'confirmada',
+  'requisitada totalmente',
+  'requisitada parcialmente',
+  'encerrada',
+  'cancelada',
+  'em produção',
+  'em producao',
+  'planejada',
+  'suspensa',
+  'status',
+];
+
 function isCodeString(str: string): boolean {
   if (!str) return false;
   const s = str.trim();
   return /^\d{2,4}[\.\-]\d{2,4}$/.test(s) || /^\d{3,6}$/.test(s);
+}
+
+function isInvalidDesc(str: string): boolean {
+  if (!str) return true;
+  const s = str.toLowerCase().trim();
+  if (s.length < 2) return true;
+  if (isCodeString(s)) return true;
+  if (INVALID_DESC_KEYWORDS.some((k) => s === k || s === k + 's')) return true;
+  return false;
 }
 
 export function sanitizeOrderQuantity(order: ProductionOrder): ProductionOrder {
@@ -178,9 +201,16 @@ export function sanitizeOrderQuantity(order: ProductionOrder): ProductionOrder {
   let desc = order.descricao || '';
   let cod = order.codigo || '';
 
-  // If description was mistakenly set to a code string like "020.0031" and code has description or is empty
-  if (isCodeString(desc)) {
-    if (cod && !isCodeString(cod) && cod !== '—') {
+  // If description was mistakenly set to a code string or invalid keyword
+  if (isInvalidDesc(desc)) {
+    if (cod && !isInvalidDesc(cod)) {
+      desc = cod;
+      cod = '—';
+    } else {
+      desc = 'Sem descrição';
+    }
+  } else if (isCodeString(desc)) {
+    if (cod && !isCodeString(cod) && !isInvalidDesc(cod)) {
       const tmp = desc;
       desc = cod;
       cod = tmp;
@@ -265,52 +295,55 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
 
     // Check if header row
     const rowText = cells.join(' ').toLowerCase();
-    if (rowText.includes('status') && (rowText.includes('descri') || rowText.includes('produto')) && (rowText.includes('ordem') || rowText.includes('op'))) {
+    if (
+      rowText.includes('status') &&
+      (rowText.includes('descri') || rowText.includes('produto')) &&
+      (rowText.includes('ordem') || rowText.includes('op'))
+    ) {
       continue;
     }
 
-    let dt = colMap.dt !== -1 ? cells[colMap.dt] || '' : cells[0] || '';
-    let st = colMap.status !== -1 ? cells[colMap.status] || '' : cells[1] || '';
-    let desc = colMap.desc !== -1 ? cells[colMap.desc] || '' : cells[2] || '';
-    let cod = colMap.cod !== -1 ? cells[colMap.cod] || '' : cells[3] || '';
-    let lote = colMap.lote !== -1 ? cells[colMap.lote] || '' : cells[4] || '';
-    let obs = colMap.obs !== -1 ? cells[colMap.obs] || '' : cells[5] || '';
-    let op = colMap.op !== -1 ? cells[colMap.op] || '' : cells[6] || '';
-    let qtdeStr = colMap.qtde !== -1 ? cells[colMap.qtde] || '0' : cells[7] || '0';
-    let qtdePStr = colMap.qtdeP !== -1 ? cells[colMap.qtdeP] || '0' : cells[8] || '0';
-    let umRaw = colMap.um !== -1 ? cells[colMap.um] || '' : '';
+    // Find cell containing OP identifier (e.g. "OP 021527-01")
+    let opIndex = cells.findIndex(
+      (c) =>
+        c.toUpperCase().startsWith('OP ') ||
+        c.toUpperCase().startsWith('OP-') ||
+        c.toUpperCase().startsWith('OP0')
+    );
 
-    // If desc is a code like "020.0031" and cod is a text description or empty, swap/fix them!
-    if (isCodeString(desc) && cod && !isCodeString(cod)) {
-      const temp = desc;
-      desc = cod;
-      cod = temp;
-    } else if (isCodeString(desc) && !cod) {
-      // Find text cell in row for description
-      const textCell = cells.find((c) => c && c.length > 5 && !isCodeString(c) && !c.toUpperCase().includes('OP ') && !c.includes('/'));
-      if (textCell) {
-        cod = desc;
-        desc = textCell;
-      }
-    }
+    let dt = '';
+    let st = '';
+    let desc = '';
+    let cod = '';
+    let lote = '';
+    let obs = '';
+    let op = '';
+    let qtdeStr = '0';
+    let qtdePStr = '0';
+    let umRaw = '';
 
-    // If OP column not identified properly, search for cell starting with OP
-    if (!op || !op.toUpperCase().includes('OP')) {
-      const opIndex = cells.findIndex(
-        (c) =>
-          c.toUpperCase().startsWith('OP ') ||
-          c.toUpperCase().startsWith('OP-') ||
-          c.toUpperCase().startsWith('OP0')
-      );
-      if (opIndex !== -1) {
-        op = cells[opIndex];
-        if (opIndex + 1 < cells.length && parseNomusNumber(cells[opIndex + 1]) > 0) {
-          qtdeStr = cells[opIndex + 1];
-        }
-        if (opIndex + 2 < cells.length && parseNomusNumber(cells[opIndex + 2]) >= 0) {
-          qtdePStr = cells[opIndex + 2];
-        }
-      }
+    if (opIndex !== -1) {
+      op = cells[opIndex];
+      obs = opIndex >= 1 ? cells[opIndex - 1] || '' : '';
+      lote = opIndex >= 2 ? cells[opIndex - 2] || '' : '';
+      cod = opIndex >= 3 ? cells[opIndex - 3] || '' : '';
+      desc = opIndex >= 4 ? cells[opIndex - 4] || '' : '';
+      st = opIndex >= 5 ? cells[opIndex - 5] || '' : '';
+      dt = opIndex >= 6 ? cells[opIndex - 6] || '' : '';
+
+      qtdeStr = opIndex + 1 < cells.length ? cells[opIndex + 1] : '0';
+      qtdePStr = opIndex + 2 < cells.length ? cells[opIndex + 2] : '0';
+    } else {
+      dt = colMap.dt !== -1 ? cells[colMap.dt] || '' : cells[0] || '';
+      st = colMap.status !== -1 ? cells[colMap.status] || '' : cells[1] || '';
+      desc = colMap.desc !== -1 ? cells[colMap.desc] || '' : cells[2] || '';
+      cod = colMap.cod !== -1 ? cells[colMap.cod] || '' : cells[3] || '';
+      lote = colMap.lote !== -1 ? cells[colMap.lote] || '' : cells[4] || '';
+      obs = colMap.obs !== -1 ? cells[colMap.obs] || '' : cells[5] || '';
+      op = colMap.op !== -1 ? cells[colMap.op] || '' : cells[6] || '';
+      qtdeStr = colMap.qtde !== -1 ? cells[colMap.qtde] || '0' : cells[7] || '0';
+      qtdePStr = colMap.qtdeP !== -1 ? cells[colMap.qtdeP] || '0' : cells[8] || '0';
+      umRaw = colMap.um !== -1 ? cells[colMap.um] || '' : '';
     }
 
     if (!op || (!op.toUpperCase().includes('OP') && !op.match(/^[0-9]{5,}/))) {
@@ -322,9 +355,32 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
 
     rawCount++;
 
+    // Validate description and code
+    if (isInvalidDesc(desc)) {
+      if (!isInvalidDesc(cod)) {
+        desc = cod;
+        cod = '';
+      } else if (!isInvalidDesc(lote) && lote.length > 8) {
+        desc = lote;
+        lote = '';
+      } else if (!isInvalidDesc(lastDesc)) {
+        desc = lastDesc;
+      } else {
+        desc = 'Sem descrição';
+      }
+    }
+
+    if (isCodeString(desc)) {
+      if (cod && !isCodeString(cod) && !isInvalidDesc(cod)) {
+        const temp = desc;
+        desc = cod;
+        cod = temp;
+      }
+    }
+
     if (dt) lastDate = dt;
-    if (st) lastStatus = st;
-    if (desc && !isCodeString(desc)) lastDesc = desc;
+    if (st && !isInvalidDesc(st)) lastStatus = st;
+    if (desc && !isInvalidDesc(desc)) lastDesc = desc;
     if (cod && isCodeString(cod)) lastCod = cod;
 
     const currentNomusStatus = st || lastStatus;
@@ -350,7 +406,7 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
 
     const q = parseNomusNumber(qtdeStr);
     const qp = parseNomusNumber(qtdePStr);
-    const finalDesc = (desc && !isCodeString(desc)) ? desc : (lastDesc || 'Sem descrição');
+    const finalDesc = !isInvalidDesc(desc) ? desc : (!isInvalidDesc(lastDesc) ? lastDesc : 'Sem descrição');
     const finalCod = (cod && isCodeString(cod)) ? cod : (lastCod || '—');
     const unidad = normalizeUnidade(umRaw, finalDesc);
 

@@ -75,16 +75,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
   return (
     <div
-      className={`relative rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm hover:shadow-md ${
+      className={`relative rounded-2xl border-2 transition-all duration-200 overflow-hidden shadow-sm hover:shadow-md ${
         order.pausada ? 'opacity-60 grayscale-[30%]' : ''
       }`}
       style={{
-        backgroundColor: darkMode ? statusInfo.bgColorDark : statusInfo.bgColorLight,
-        borderTopColor: unreadCount > 0 ? '#EF4444' : (darkMode ? statusInfo.borderColorDark : statusInfo.borderColorLight),
-        borderRightColor: unreadCount > 0 ? '#EF4444' : (darkMode ? statusInfo.borderColorDark : statusInfo.borderColorLight),
-        borderBottomColor: unreadCount > 0 ? '#EF4444' : (darkMode ? statusInfo.borderColorDark : statusInfo.borderColorLight),
-        borderLeftColor: statusInfo.color,
-        borderLeftWidth: '5px',
+        backgroundColor: darkMode ? (statusInfo.bgColorDark || '#180d0e') : statusInfo.bgColorLight,
+        borderColor: unreadCount > 0 ? '#EF4444' : (darkMode ? (statusInfo.borderColorDark || '#e03131') : statusInfo.borderColorLight),
       }}
     >
       {/* Card Header & Main Specs */}
@@ -95,23 +91,27 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         <div className="flex items-start justify-between gap-3">
           {/* OP Identity */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               <span
-                className="font-mono text-xs font-bold px-2 py-0.5 rounded-md tracking-wider"
-                style={{ backgroundColor: `${statusInfo.color}20`, color: statusInfo.color }}
+                className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg tracking-wider border"
+                style={{
+                  backgroundColor: `${statusInfo.color}15`,
+                  color: statusInfo.color,
+                  borderColor: `${statusInfo.color}35`,
+                }}
               >
                 {order.numero}
               </span>
 
               {unreadCount > 0 && (
-                <span className="px-2 py-0.5 text-[10px] font-black bg-rose-600 text-white rounded-full uppercase tracking-wider animate-pulse">
-                  {unreadCount} Novo Aviso
+                <span className="px-2.5 py-1 text-[10px] font-black bg-rose-600 text-white rounded-full uppercase tracking-wider animate-pulse shadow-sm">
+                  {unreadCount} {unreadCount === 1 ? 'Novo Aviso' : 'Novos Avisos'}
                 </span>
               )}
 
               {order.favorito && (
                 <span className="text-amber-400 text-xs flex items-center gap-0.5 font-bold">
-                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
                 </span>
               )}
 
@@ -122,40 +122,44 @@ export const OrderCard: React.FC<OrderCardProps> = ({
               )}
             </div>
 
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug">
+            <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white line-clamp-2 leading-snug tracking-tight uppercase">
               {order.descricao}
             </h3>
 
-            <div className="flex items-center gap-2 mt-1 text-xs text-slate-600 dark:text-slate-400">
-              <span className="font-mono text-[11px]">Cód: {order.codigo}</span>
+            <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-600 dark:text-slate-400 font-medium">
+              <span className="font-mono text-[12px]">Cód: {order.codigo}</span>
               {order.lote && (
-                <span className="text-slate-500">· Lote: {order.lote}</span>
+                <span className="text-slate-400">· Lote: {order.lote}</span>
               )}
             </div>
           </div>
 
           {/* Quantities Badge */}
-          <div className="text-right flex-shrink-0 bg-slate-100 dark:bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
+          <div className="text-right flex-shrink-0 bg-slate-100 dark:bg-slate-900/80 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800/80 flex flex-col justify-center min-w-[75px]">
             <div
-              className="text-xl font-black font-mono leading-none"
+              className="text-2xl font-black font-mono leading-none"
               style={{ color: statusInfo.color }}
             >
               {formatQuantity(order.quantidade)}
             </div>
-            <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+            <div className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 mt-1">
               {order.qtde_produzida > 0
                 ? `${formatQuantity(order.qtde_produzida)}/${formatQuantity(order.quantidade)} ${order.unidade || 'pc'} prod.`
-                : (order.unidade || detectUnidade(order.descricao, order.quantidade))}
+                : `${order.unidade || detectUnidade(order.descricao, order.quantidade)}`}
             </div>
           </div>
         </div>
 
         {/* Status Badge & Delay Motivo Alert */}
-        <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200 dark:border-slate-800/80">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200 dark:border-slate-800/80">
+          <div className="flex items-center gap-2 flex-wrap">
             <span
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold"
-              style={{ backgroundColor: `${statusInfo.color}25`, color: statusInfo.color }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border"
+              style={{
+                backgroundColor: `${statusInfo.color}20`,
+                color: statusInfo.color,
+                borderColor: `${statusInfo.color}40`,
+              }}
             >
               <span>{statusInfo.icon}</span>
               <span>{statusInfo.label}</span>
@@ -163,17 +167,21 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
             {deadline && (
               <span
-                className="px-2 py-0.5 text-[11px] font-bold rounded-lg flex items-center gap-1"
-                style={{ backgroundColor: `${deadline.color}20`, color: deadline.color }}
+                className="px-2.5 py-1 text-xs font-bold rounded-xl flex items-center gap-1.5 border"
+                style={{
+                  backgroundColor: `${deadline.color}20`,
+                  color: deadline.color,
+                  borderColor: `${deadline.color}40`,
+                }}
               >
-                <Clock className="w-3 h-3" />
+                <Clock className="w-3.5 h-3.5" />
                 <span>{deadline.text}</span>
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
-            <span className="text-xs font-medium">
+          <div className="flex items-center gap-1 text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer">
+            <span className="text-xs font-semibold">
               {expanded ? 'Ocultar' : 'Detalhes'}
             </span>
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -182,7 +190,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
         {/* Delay Reason Banner if delayed */}
         {order.motivo_atraso && (
-          <div className="mt-2 p-2.5 rounded-xl bg-rose-950/60 border border-rose-800/50 text-rose-200 text-xs flex items-start gap-2">
+          <div className="mt-2.5 p-2.5 rounded-xl bg-rose-950/50 border border-rose-800/60 text-rose-200 text-xs flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <strong className="text-rose-300 font-bold">Motivo do Atraso:</strong>{' '}
