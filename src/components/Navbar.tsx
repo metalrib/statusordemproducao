@@ -52,7 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white shadow-md transition-colors">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16 gap-2">
           {/* Logo & Role Badge */}
           <div className="flex items-center gap-3">
