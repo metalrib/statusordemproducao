@@ -156,11 +156,12 @@ export function sanitizeOrderQuantity(order: ProductionOrder): ProductionOrder {
   let q = order.quantidade;
   let qp = order.qtde_produzida;
 
-  // Clean up corrupted values resulting from earlier parsing bugs (e.g. 97200, 4800, 400)
-  if (q >= 100 && q % 100 === 0 && Number.isInteger(q)) {
+  // Fix previously corrupted values in storage (e.g. 97200 -> 972, 4800 -> 48, 2000 -> 20)
+  if (q >= 1000 && q % 100 === 0 && Number.isInteger(q)) {
     q = q / 100;
   }
-  if (qp >= 100 && qp % 100 === 0 && Number.isInteger(qp)) {
+
+  if (qp >= 1000 && qp % 100 === 0 && Number.isInteger(qp)) {
     qp = qp / 100;
   }
 
