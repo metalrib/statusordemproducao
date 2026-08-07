@@ -52,6 +52,8 @@ export default function App() {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<CategoryKey>('todas');
   const [searchQuery, setSearchQuery] = useState('');
   const [messageSubTab, setMessageSubTab] = useState<'ativos' | 'arquivados'>('ativos');
+  const [msgSearchQuery, setMsgSearchQuery] = useState('');
+  const [msgPeriodFilter, setMsgPeriodFilter] = useState<'todos' | 'hoje' | '7dias' | '30dias'>('todos');
 
   // Modals
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -350,7 +352,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white pb-12">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-600 selection:text-white pb-12 transition-colors duration-200">
       {/* Sticky Header Navbar */}
       <Navbar
         role={role}
@@ -375,22 +377,22 @@ export default function App() {
         {role === 'pcp' && (
           <div
             onClick={() => setIsImportModalOpen(true)}
-            className="p-3.5 bg-gradient-to-r from-blue-900/60 via-slate-900 to-indigo-900/60 border border-blue-500/30 rounded-2xl flex items-center justify-between cursor-pointer hover:border-blue-400 transition-all shadow-lg group"
+            className="p-3.5 bg-gradient-to-r from-blue-50 via-slate-50 to-indigo-50 dark:from-blue-900/60 dark:via-slate-900 dark:to-indigo-900/60 border border-blue-200 dark:border-blue-500/30 rounded-2xl flex items-center justify-between cursor-pointer hover:border-blue-400 transition-all shadow-sm dark:shadow-lg group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-600/30 border border-blue-400/30 text-blue-400 flex items-center justify-center font-bold text-lg group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-600/30 border border-blue-300 dark:border-blue-400/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-lg group-hover:scale-105 transition-transform">
                 <Upload className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-xs text-white">Importar HTML do Nomus ERP</span>
+                  <span className="font-extrabold text-xs text-slate-900 dark:text-white">Importar HTML do Nomus ERP</span>
                   {uploadedFileName && (
-                    <span className="px-2 py-0.5 text-[10px] bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full font-mono">
+                    <span className="px-2 py-0.5 text-[10px] bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-400/30 rounded-full font-mono font-semibold">
                       📄 {uploadedFileName}
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-slate-600 dark:text-slate-400">
                   {uploadedFileName
                     ? 'Clique para atualizar o arquivo .html e atualizar o status das ordens'
                     : 'Clique ou arraste o arquivo .html exportado do Nomus para alimentar o sistema'}
@@ -611,6 +613,7 @@ export default function App() {
           <TimelineView
             orders={orders}
             role={role}
+            darkMode={darkMode}
             unreadMap={unreadMap}
             onStatusChange={handleStatusChange}
             onToggleFavorite={handleToggleFavorite}
@@ -625,61 +628,159 @@ export default function App() {
         {/* Tab 5: Messages & Active Notice Threads */}
         {activeTab === 'messages' && (
           <div className="space-y-4 max-w-4xl mx-auto animate-fade-in">
-            <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
-              <div>
-                <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">Central de Avisos e Comunicação</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Acompanhamento de conversas e pendências sinalizadas entre PCP e Produção
-                </p>
+            <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3 shadow-sm">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">Central de Avisos e Comunicação</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Acompanhamento de conversas e pendências sinalizadas entre PCP e Produção
+                  </p>
+                </div>
+
+                {/* Filter Subtabs: Ativos vs Arquivados */}
+                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <button
+                    onClick={() => setMessageSubTab('ativos')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      messageSubTab === 'ativos'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <span>Ativos</span>
+                    <span className="px-1.5 py-0.2 text-[10px] bg-white/20 rounded-full font-mono">
+                      {messages.filter((m) => !m.arquivada).length}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setMessageSubTab('arquivados')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      messageSubTab === 'arquivados'
+                        ? 'bg-amber-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <span>Arquivados</span>
+                    <span className="px-1.5 py-0.2 text-[10px] bg-white/20 rounded-full font-mono">
+                      {messages.filter((m) => m.arquivada).length}
+                    </span>
+                  </button>
+                </div>
               </div>
 
-              {/* Filter Subtabs: Ativos vs Arquivados */}
-              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-                <button
-                  onClick={() => setMessageSubTab('ativos')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    messageSubTab === 'ativos'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <span>Ativos</span>
-                  <span className="px-1.5 py-0.2 text-[10px] bg-white/20 rounded-full font-mono">
-                    {messages.filter((m) => !m.arquivada).length}
-                  </span>
-                </button>
+              {/* OP Search and Period Filters for Messages */}
+              <div className="flex flex-col sm:flex-row items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <div className="relative flex-1 w-full">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={msgSearchQuery}
+                    onChange={(e) => setMsgSearchQuery(e.target.value)}
+                    placeholder="Filtrar avisos por OP (ex: 018500), descrição ou conteúdo..."
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {msgSearchQuery && (
+                    <button
+                      onClick={() => setMsgSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
 
-                <button
-                  onClick={() => setMessageSubTab('arquivados')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    messageSubTab === 'arquivados'
-                      ? 'bg-amber-600 text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <span>Arquivados</span>
-                  <span className="px-1.5 py-0.2 text-[10px] bg-white/20 rounded-full font-mono">
-                    {messages.filter((m) => m.arquivada).length}
-                  </span>
-                </button>
+                {/* Period selector */}
+                <div className="flex items-center gap-1 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                  <button
+                    onClick={() => setMsgPeriodFilter('todos')}
+                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap cursor-pointer transition-all ${
+                      msgPeriodFilter === 'todos'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    Todo o Período
+                  </button>
+                  <button
+                    onClick={() => setMsgPeriodFilter('hoje')}
+                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap cursor-pointer transition-all ${
+                      msgPeriodFilter === 'hoje'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    Hoje
+                  </button>
+                  <button
+                    onClick={() => setMsgPeriodFilter('7dias')}
+                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap cursor-pointer transition-all ${
+                      msgPeriodFilter === '7dias'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    Últimos 7 dias
+                  </button>
+                  <button
+                    onClick={() => setMsgPeriodFilter('30dias')}
+                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap cursor-pointer transition-all ${
+                      msgPeriodFilter === '30dias'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    Últimos 30 dias
+                  </button>
+                </div>
               </div>
             </div>
 
             {(() => {
-              const displayMessages = messages.filter((m) =>
-                messageSubTab === 'arquivados' ? m.arquivada : !m.arquivada
-              );
+              const displayMessages = messages.filter((m) => {
+                const isTabMatch = messageSubTab === 'arquivados' ? m.arquivada : !m.arquivada;
+                if (!isTabMatch) return false;
+
+                if (msgSearchQuery.trim()) {
+                  const q = msgSearchQuery.toLowerCase().trim();
+                  const matchesOp = m.orderNumero.toLowerCase().includes(q);
+                  const matchesDesc = m.orderDesc.toLowerCase().includes(q);
+                  const matchesText = m.text.toLowerCase().includes(q);
+                  if (!matchesOp && !matchesDesc && !matchesText) return false;
+                }
+
+                if (msgPeriodFilter !== 'todos') {
+                  const msgDate = new Date(m.timestamp).getTime();
+                  const now = Date.now();
+                  if (msgPeriodFilter === 'hoje') {
+                    const startOfToday = new Date().setHours(0, 0, 0, 0);
+                    if (msgDate < startOfToday) return false;
+                  } else if (msgPeriodFilter === '7dias') {
+                    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+                    if (msgDate < sevenDaysAgo) return false;
+                  } else if (msgPeriodFilter === '30dias') {
+                    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+                    if (msgDate < thirtyDaysAgo) return false;
+                  }
+                }
+
+                return true;
+              });
 
               if (displayMessages.length === 0) {
                 return (
                   <div className="py-16 text-center bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-500 dark:text-slate-400 text-xs space-y-1">
                     <p className="font-bold">
-                      {messageSubTab === 'arquivados'
+                      {msgSearchQuery || msgPeriodFilter !== 'todos'
+                        ? 'Nenhum aviso encontrado para os filtros aplicados.'
+                        : messageSubTab === 'arquivados'
                         ? 'Nenhum aviso arquivado no momento.'
                         : 'Nenhum aviso ou conversa aberta em andamento.'}
                     </p>
                     <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                      Para iniciar um aviso em uma OP, abra a lista de OPs e clique em "Abrir Chat".
+                      {(msgSearchQuery || msgPeriodFilter !== 'todos')
+                        ? 'Tente alterar a busca de OP ou limpar o filtro de período.'
+                        : 'Para iniciar um aviso em uma OP, abra a lista de OPs e clique em "Abrir Chat".'}
                     </p>
                   </div>
                 );

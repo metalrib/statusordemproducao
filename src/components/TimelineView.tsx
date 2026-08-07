@@ -8,6 +8,7 @@ interface TimelineViewProps {
   orders: ProductionOrder[];
   role: Role;
   unreadMap: Record<string, number>;
+  darkMode?: boolean;
   onStatusChange: (id: string, newStatus: OrderStatusKey, motivo?: string) => void;
   onToggleFavorite: (id: string) => void;
   onTogglePaused: (id: string) => void;
@@ -18,6 +19,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   orders,
   role,
   unreadMap,
+  darkMode = true,
   onStatusChange,
   onToggleFavorite,
   onTogglePaused,
@@ -57,42 +59,42 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Intro Metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-          <div className="text-xs font-semibold text-rose-400 flex items-center gap-1.5">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
             <AlertTriangle className="w-4 h-4" />
             <span>OPs Atrasadas</span>
           </div>
-          <div className="text-2xl font-black text-rose-400 font-mono mt-1">
+          <div className="text-2xl font-black text-rose-600 dark:text-rose-400 font-mono mt-1">
             {overdue.length}
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-          <div className="text-xs font-semibold text-purple-400 flex items-center gap-1.5">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="text-xs font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
             <Clock className="w-4 h-4" />
             <span>Entrega Hoje</span>
           </div>
-          <div className="text-2xl font-black text-purple-400 font-mono mt-1">
+          <div className="text-2xl font-black text-purple-600 dark:text-purple-400 font-mono mt-1">
             {today.length}
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-          <div className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
             <Calendar className="w-4 h-4" />
             <span>Próximos 3 Dias</span>
           </div>
-          <div className="text-2xl font-black text-amber-400 font-mono mt-1">
+          <div className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono mt-1">
             {next3Days.length}
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-          <div className="text-xs font-semibold text-blue-400 flex items-center gap-1.5">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4" />
             <span>Esta Semana</span>
           </div>
-          <div className="text-2xl font-black text-blue-400 font-mono mt-1">
+          <div className="text-2xl font-black text-blue-600 dark:text-blue-400 font-mono mt-1">
             {thisWeek.length}
           </div>
         </div>
@@ -106,12 +108,12 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
           return (
             <div
               key={group.title}
-              className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4"
+              className="p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm"
             >
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{group.icon}</span>
-                  <h3 className="font-extrabold text-base text-white">{group.title}</h3>
+                  <h3 className="font-extrabold text-base text-slate-900 dark:text-white">{group.title}</h3>
                 </div>
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-extrabold border ${group.badgeBg}`}
@@ -126,6 +128,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                     key={order.id}
                     order={order}
                     role={role}
+                    darkMode={darkMode}
                     unreadCount={unreadMap[order.numero] || 0}
                     onStatusChange={onStatusChange}
                     onToggleFavorite={onToggleFavorite}
