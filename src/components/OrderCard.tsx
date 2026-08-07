@@ -26,6 +26,7 @@ interface OrderCardProps {
   order: ProductionOrder;
   role: Role;
   unreadCount?: number;
+  darkMode?: boolean;
   onStatusChange: (id: string, newStatus: OrderStatusKey, motivo?: string) => void;
   onToggleFavorite: (id: string) => void;
   onTogglePaused: (id: string) => void;
@@ -37,6 +38,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   order,
   role,
   unreadCount = 0,
+  darkMode = true,
   onStatusChange,
   onToggleFavorite,
   onTogglePaused,
@@ -77,8 +79,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         order.pausada ? 'opacity-60 grayscale-[30%]' : ''
       }`}
       style={{
-        backgroundColor: statusInfo.bgColorDark,
-        borderColor: unreadCount > 0 ? '#EF4444' : statusInfo.borderColorDark,
+        backgroundColor: darkMode ? statusInfo.bgColorDark : statusInfo.bgColorLight,
+        borderColor: unreadCount > 0 ? '#EF4444' : (darkMode ? statusInfo.borderColorDark : statusInfo.borderColorLight),
         borderLeftWidth: '5px',
         borderLeftColor: statusInfo.color,
       }}
@@ -112,18 +114,18 @@ export const OrderCard: React.FC<OrderCardProps> = ({
               )}
 
               {order.pausada && (
-                <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-md">
+                <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded-md">
                   Pausada
                 </span>
               )}
             </div>
 
-            <h3 className="text-sm font-bold text-white line-clamp-2 leading-snug">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug">
               {order.descricao}
             </h3>
 
-            <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
-              <span className="font-mono text-[11px] text-slate-400">Cód: {order.codigo}</span>
+            <div className="flex items-center gap-2 mt-1 text-xs text-slate-600 dark:text-slate-400">
+              <span className="font-mono text-[11px]">Cód: {order.codigo}</span>
               {order.lote && (
                 <span className="text-slate-500">· Lote: {order.lote}</span>
               )}
@@ -131,21 +133,21 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           </div>
 
           {/* Quantities Badge */}
-          <div className="text-right flex-shrink-0 bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-800">
+          <div className="text-right flex-shrink-0 bg-slate-100 dark:bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
             <div
               className="text-xl font-black font-mono leading-none"
               style={{ color: statusInfo.color }}
             >
               {order.quantidade}
             </div>
-            <div className="text-[10px] font-semibold text-slate-400 mt-0.5">
+            <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
               {order.qtde_produzida > 0 ? `${order.qtde_produzida}/${order.quantidade} prod.` : 'unid.'}
             </div>
           </div>
         </div>
 
         {/* Status Badge & Delay Motivo Alert */}
-        <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200 dark:border-slate-800/80">
           <div className="flex items-center gap-2">
             <span
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold"
@@ -166,8 +168,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
-            <span className="text-xs font-medium text-slate-400">
+          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+            <span className="text-xs font-medium">
               {expanded ? 'Ocultar' : 'Detalhes'}
             </span>
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}

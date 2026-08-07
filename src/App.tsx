@@ -51,6 +51,7 @@ export default function App() {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<OrderStatusKey | 'todos'>('todos');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<CategoryKey>('todas');
   const [searchQuery, setSearchQuery] = useState('');
+  const [messageSubTab, setMessageSubTab] = useState<'ativos' | 'arquivados'>('ativos');
 
   // Modals
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -257,6 +258,22 @@ export default function App() {
     }
   };
 
+  const handleUnarchiveMessage = (msgId: string) => {
+    let targetMsg: ChatMessage | null = null;
+    const updated = messages.map((m) => {
+      if (m.id === msgId) {
+        targetMsg = { ...m, arquivada: false };
+        return targetMsg;
+      }
+      return m;
+    });
+    setMessages(updated);
+    storage.saveMessages(updated);
+    if (targetMsg) {
+      saveMessageToFirestore(targetMsg);
+    }
+  };
+
   const handleDeleteMessage = (msgId: string) => {
     const updated = messages.filter((m) => m.id !== msgId);
     setMessages(updated);
@@ -391,17 +408,17 @@ export default function App() {
         {activeTab === 'grid' && (
           <div className="space-y-5 animate-fade-in">
             {/* Subtabs (Todas / Favoritas / Pausadas) */}
-            <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto">
               <button
                 onClick={() => setOrdersSubTab('todas')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-2 ${
                   ordersSubTab === 'todas'
                     ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800'
                 }`}
               >
                 <span>Todas as OPs</span>
-                <span className="px-1.5 py-0.2 text-[10px] bg-white/20 rounded-full">
+                <span className="px-1.5 py-0.2 text-[10px] bg-slate-100 dark:bg-white/20 text-slate-700 dark:text-white rounded-full">
                   {orders.filter((o) => !o.pausada).length}
                 </span>
               </button>
@@ -411,12 +428,12 @@ export default function App() {
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-2 ${
                   ordersSubTab === 'favoritas'
                     ? 'bg-amber-500 text-slate-950 shadow-md'
-                    : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800'
                 }`}
               >
-                <Star className="w-3.5 h-3.5 fill-current" />
+                <Star className="w-3.5 h-3.5 fill-current text-amber-500" />
                 <span>Favoritas</span>
-                <span className="px-1.5 py-0.2 text-[10px] bg-black/20 rounded-full">
+                <span className="px-1.5 py-0.2 text-[10px] bg-slate-100 dark:bg-black/20 text-slate-700 dark:text-slate-300 rounded-full">
                   {favoritesCount}
                 </span>
               </button>
@@ -425,13 +442,13 @@ export default function App() {
                 onClick={() => setOrdersSubTab('pausadas')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-2 ${
                   ordersSubTab === 'pausadas'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                    ? 'bg-amber-600 text-white shadow-md'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800'
                 }`}
               >
                 <PauseCircle className="w-3.5 h-3.5" />
                 <span>Pausadas</span>
-                <span className="px-1.5 py-0.2 text-[10px] bg-white/20 rounded-full">
+                <span className="px-1.5 py-0.2 text-[10px] bg-slate-100 dark:bg-white/20 text-slate-700 dark:text-white rounded-full">
                   {pausedCount}
                 </span>
               </button>
@@ -450,17 +467,17 @@ export default function App() {
                     onClick={() =>
                       setSelectedStatusFilter(isSelected ? 'todos' : statusKey)
                     }
-                    className={`p-3 rounded-2xl border cursor-pointer transition-all text-center select-none ${
+                    className={`p-3 rounded-2xl border cursor-pointer transition-all text-center select-none shadow-sm ${
                       isSelected
                         ? 'ring-2 ring-blue-500 scale-[1.02]'
-                        : 'hover:border-slate-700'
+                        : 'hover:border-slate-400 dark:hover:border-slate-700'
                     }`}
                     style={{
-                      backgroundColor: info.bgColorDark,
-                      borderColor: isSelected ? info.color : info.borderColorDark,
+                      backgroundColor: darkMode ? info.bgColorDark : info.bgColorLight,
+                      borderColor: isSelected ? info.color : (darkMode ? info.borderColorDark : info.borderColorLight),
                     }}
                   >
-                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400">
                       {info.label}
                     </div>
                     <div
@@ -481,18 +498,18 @@ export default function App() {
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
               {/* Search Box */}
               <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Buscar por número de OP, descrição, código do item, lote ou motivo de atraso..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-800 dark:hover:text-white text-xs"
                   >
                     ✕
                   </button>
@@ -518,14 +535,14 @@ export default function App() {
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
                         isCatSelected
                           ? 'bg-blue-600 text-white shadow-md'
-                          : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                          : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       <span>{cat.icon}</span>
                       <span>{cat.label}</span>
                       <span
                         className={`px-1.5 py-0.2 text-[10px] rounded-full font-mono ${
-                          isCatSelected ? 'bg-white/20' : 'bg-slate-800 text-slate-400'
+                          isCatSelected ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                         }`}
                       >
                         {catCount}
@@ -538,9 +555,9 @@ export default function App() {
 
             {/* Orders Cards Grid */}
             {filteredOrders.length === 0 ? (
-              <div className="py-16 text-center bg-slate-900/60 border border-dashed border-slate-800 rounded-2xl space-y-3">
-                <Search className="w-10 h-10 mx-auto text-slate-600" />
-                <h3 className="text-sm font-bold text-slate-300">Nenhuma Ordem de Produção Encontrada</h3>
+              <div className="py-16 text-center bg-white dark:bg-slate-900/60 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl space-y-3">
+                <Search className="w-10 h-10 mx-auto text-slate-400 dark:text-slate-600" />
+                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">Nenhuma Ordem de Produção Encontrada</h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
                   Tente alterar os filtros de busca, selecionar outra categoria ou importar um novo arquivo HTML do Nomus ERP.
                 </p>
@@ -550,7 +567,7 @@ export default function App() {
                     setSelectedStatusFilter('todos');
                     setSelectedCategoryFilter('todas');
                   }}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl cursor-pointer"
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-bold text-xs rounded-xl cursor-pointer"
                 >
                   Limpar Filtros de Busca
                 </button>
@@ -562,6 +579,7 @@ export default function App() {
                     key={order.id}
                     order={order}
                     role={role}
+                    darkMode={darkMode}
                     unreadCount={unreadMap[order.numero] || 0}
                     onStatusChange={handleStatusChange}
                     onToggleFavorite={handleToggleFavorite}
@@ -579,6 +597,7 @@ export default function App() {
           <KanbanBoard
             orders={orders}
             role={role}
+            darkMode={darkMode}
             unreadMap={unreadMap}
             onStatusChange={handleStatusChange}
             onToggleFavorite={handleToggleFavorite}
@@ -606,67 +625,131 @@ export default function App() {
         {/* Tab 5: Messages & Active Notice Threads */}
         {activeTab === 'messages' && (
           <div className="space-y-4 max-w-4xl mx-auto animate-fade-in">
-            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between">
+            <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
               <div>
-                <h2 className="text-sm font-extrabold text-white">Central de Avisos e Comunicação</h2>
-                <p className="text-xs text-slate-400">
+                <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">Central de Avisos e Comunicação</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Acompanhamento de conversas e pendências sinalizadas entre PCP e Produção
                 </p>
               </div>
-              {totalUnreadCount > 0 && (
-                <span className="px-3 py-1 bg-rose-600 text-white font-black text-xs rounded-full animate-pulse">
-                  {totalUnreadCount} Novos Avisos
-                </span>
-              )}
+
+              {/* Filter Subtabs: Ativos vs Arquivados */}
+              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                <button
+                  onClick={() => setMessageSubTab('ativos')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    messageSubTab === 'ativos'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span>Ativos</span>
+                  <span className="px-1.5 py-0.2 text-[10px] bg-white/20 rounded-full font-mono">
+                    {messages.filter((m) => !m.arquivada).length}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setMessageSubTab('arquivados')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    messageSubTab === 'arquivados'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span>Arquivados</span>
+                  <span className="px-1.5 py-0.2 text-[10px] bg-white/20 rounded-full font-mono">
+                    {messages.filter((m) => m.arquivada).length}
+                  </span>
+                </button>
+              </div>
             </div>
 
-            {messages.length === 0 ? (
-              <div className="py-16 text-center bg-slate-900/60 border border-slate-800 rounded-2xl text-slate-500 text-xs">
-                Nenhum aviso ou conversa aberta. Para iniciar um aviso, abra qualquer OP e clique em "Abrir Chat".
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 hover:border-slate-700 transition-all"
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-blue-400">{msg.orderNumero}</span>
-                        <span className="text-slate-400 font-medium truncate max-w-xs">{msg.orderDesc}</span>
-                      </div>
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {new Date(msg.timestamp).toLocaleString('pt-BR')}
-                      </span>
-                    </div>
+            {(() => {
+              const displayMessages = messages.filter((m) =>
+                messageSubTab === 'arquivados' ? m.arquivada : !m.arquivada
+              );
 
-                    <p className="text-xs text-slate-200 bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-                      <strong>{msg.from === 'pcp' ? '📋 PCP:' : '🏭 Produção:'}</strong> {msg.text}
+              if (displayMessages.length === 0) {
+                return (
+                  <div className="py-16 text-center bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-500 dark:text-slate-400 text-xs space-y-1">
+                    <p className="font-bold">
+                      {messageSubTab === 'arquivados'
+                        ? 'Nenhum aviso arquivado no momento.'
+                        : 'Nenhum aviso ou conversa aberta em andamento.'}
                     </p>
-
-                    <div className="flex justify-end gap-2 pt-1 text-[11px]">
-                      <button
-                        onClick={() => {
-                          const target = orders.find((o) => o.numero === msg.orderNumero);
-                          if (target) handleOpenChat(target);
-                        }}
-                        className="px-3 py-1 bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 border border-blue-500/30 rounded-lg font-bold cursor-pointer"
-                      >
-                        Responder no Chat
-                      </button>
-
-                      <button
-                        onClick={() => handleArchiveMessage(msg.id)}
-                        className="px-3 py-1 bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 border border-emerald-500/30 rounded-lg font-bold cursor-pointer"
-                      >
-                        Arquivar
-                      </button>
-                    </div>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                      Para iniciar um aviso em uma OP, abra a lista de OPs e clique em "Abrir Chat".
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  {displayMessages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-2 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm"
+                    >
+                      <div className="flex items-center justify-between text-xs flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800/60">
+                            {msg.orderNumero}
+                          </span>
+                          <span className="text-slate-700 dark:text-slate-300 font-semibold truncate max-w-xs">
+                            {msg.orderDesc}
+                          </span>
+                          {msg.arquivada && (
+                            <span className="px-2 py-0.5 text-[10px] bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded font-bold">
+                              Arquivado
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                          {new Date(msg.timestamp).toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800/80 leading-relaxed">
+                        <strong className="text-blue-700 dark:text-blue-400">
+                          {msg.from === 'pcp' ? '📋 PCP:' : '🏭 Produção:'}
+                        </strong>{' '}
+                        {msg.text}
+                      </p>
+
+                      <div className="flex justify-end items-center gap-2 pt-1 text-[11px]">
+                        <button
+                          onClick={() => {
+                            const target = orders.find((o) => o.numero === msg.orderNumero);
+                            if (target) handleOpenChat(target);
+                          }}
+                          className="px-3 py-1.5 bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-600/30 border border-blue-200 dark:border-blue-500/30 rounded-lg font-bold cursor-pointer transition-colors"
+                        >
+                          Abrir Chat da OP
+                        </button>
+
+                        {msg.arquivada ? (
+                          <button
+                            onClick={() => handleUnarchiveMessage(msg.id)}
+                            className="px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 rounded-lg font-bold cursor-pointer transition-colors"
+                          >
+                            Desarquivar / Reabrir
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleArchiveMessage(msg.id)}
+                            className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-600/30 border border-emerald-300 dark:border-emerald-500/30 rounded-lg font-bold cursor-pointer transition-colors"
+                          >
+                            Arquivar Aviso
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
       </main>

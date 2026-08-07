@@ -7,6 +7,7 @@ interface KanbanBoardProps {
   orders: ProductionOrder[];
   role: Role;
   unreadMap: Record<string, number>;
+  darkMode?: boolean;
   onStatusChange: (id: string, newStatus: OrderStatusKey, motivo?: string) => void;
   onToggleFavorite: (id: string) => void;
   onTogglePaused: (id: string) => void;
@@ -17,6 +18,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   orders,
   role,
   unreadMap,
+  darkMode = true,
   onStatusChange,
   onToggleFavorite,
   onTogglePaused,
@@ -41,16 +43,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         return (
           <div
             key={colKey}
-            className="w-80 flex-shrink-0 snap-none flex flex-col rounded-2xl bg-slate-900/80 border border-slate-800 overflow-hidden max-h-[calc(100vh-12rem)]"
+            className="w-80 flex-shrink-0 snap-none flex flex-col rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 overflow-hidden max-h-[calc(100vh-12rem)] shadow-sm"
           >
             {/* Column Header */}
             <div
-              className="p-3.5 border-b border-slate-800 flex items-center justify-between"
+              className="p-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between"
               style={{ backgroundColor: `${info.color}15` }}
             >
               <div className="flex items-center gap-2">
                 <span className="text-lg">{info.icon}</span>
-                <span className="font-extrabold text-sm text-white uppercase tracking-wider">
+                <span className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wider">
                   {info.label}
                 </span>
               </div>
@@ -65,7 +67,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             {/* Column Cards Container */}
             <div className="p-3 overflow-y-auto space-y-3 flex-1 custom-scrollbar">
               {colOrders.length === 0 ? (
-                <div className="py-12 text-center text-slate-500 text-xs font-medium border border-dashed border-slate-800 rounded-xl">
+                <div className="py-12 text-center text-slate-400 dark:text-slate-500 text-xs font-medium border border-dashed border-slate-300 dark:border-slate-800 rounded-xl">
                   Nenhuma OP nesta coluna
                 </div>
               ) : (
@@ -74,6 +76,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     key={order.id}
                     order={order}
                     role={role}
+                    darkMode={darkMode}
                     unreadCount={unreadMap[order.numero] || 0}
                     onStatusChange={onStatusChange}
                     onToggleFavorite={onToggleFavorite}

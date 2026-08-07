@@ -51,7 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
 }) => {
   return (
-    <header className="sticky top-0 z-40 bg-slate-900 border-b border-slate-800 text-white shadow-lg">
+    <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white shadow-md transition-colors">
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
         <div className="flex items-center justify-between h-16 gap-2">
           {/* Logo & Role Badge */}
@@ -61,37 +61,37 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-extrabold tracking-wider text-base sm:text-lg text-white">
+                <span className="font-extrabold tracking-wider text-base sm:text-lg text-slate-900 dark:text-white">
                   METALRIB
                 </span>
                 <span
                   className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
                     role === 'pcp'
-                      ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
-                      : 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
+                      ? 'bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-400/30'
+                      : 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-400/30'
                   }`}
                 >
                   {role === 'pcp' ? 'PCP' : 'Eduardo (Produção)'}
                 </span>
-                <span className="hidden xl:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="hidden xl:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
                   Firebase Sincronizado
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 hidden sm:block">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">
                 Gestão de Ordens de Produção & Prazos
               </p>
             </div>
           </div>
 
           {/* Nav Tabs */}
-          <nav className="hidden md:flex items-center gap-1 bg-slate-800/80 p-1.5 rounded-xl border border-slate-700/60">
+          <nav className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700/60">
             <button
               onClick={() => setActiveTab('grid')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'grid'
                   ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700/60'
               }`}
             >
               <FileSpreadsheet className="w-4 h-4" />
@@ -103,7 +103,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'kanban'
                   ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700/60'
               }`}
             >
               <Kanban className="w-4 h-4" />
@@ -115,7 +115,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'timeline'
                   ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700/60'
               }`}
             >
               <Clock className="w-4 h-4" />
@@ -127,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'analytics'
                   ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700/60'
               }`}
             >
               <BarChart3 className="w-4 h-4" />
@@ -139,7 +139,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className={`relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'messages'
                   ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700/60'
               }`}
             >
               <MessageSquare className="w-4 h-4" />
@@ -167,7 +167,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               onClick={onOpenPrintModal}
-              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-all cursor-pointer"
+              className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-lg border border-slate-300 dark:border-slate-700 transition-all cursor-pointer"
               title="Relatório para Reunião Matinal / Imprimir"
             >
               <Printer className="w-4 h-4" />
@@ -175,7 +175,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               onClick={onOpenBackupModal}
-              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-all cursor-pointer"
+              className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-lg border border-slate-300 dark:border-slate-700 transition-all cursor-pointer"
               title="Backup / Restaurar Dados"
             >
               <Download className="w-4 h-4" />
@@ -183,15 +183,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               onClick={onToggleDarkMode}
-              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-all cursor-pointer"
+              className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-lg border border-slate-300 dark:border-slate-700 transition-all cursor-pointer"
               title={darkMode ? 'Mudar para Tema Claro' : 'Mudar para Tema Escuro'}
             >
-              {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-300" />}
+              {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
             </button>
 
             <button
               onClick={onLogout}
-              className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800/80 hover:bg-rose-900/40 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 text-xs font-semibold rounded-lg transition-all cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-slate-700 dark:text-slate-300 hover:text-rose-700 dark:hover:text-rose-300 border border-slate-300 dark:border-slate-700 hover:border-rose-300 dark:hover:border-rose-500/40 text-xs font-semibold rounded-lg transition-all cursor-pointer"
               title="Trocar perfil ou sair"
             >
               <LogOut className="w-3.5 h-3.5" />
