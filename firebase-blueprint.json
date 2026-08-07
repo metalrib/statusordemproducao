@@ -1,0 +1,43 @@
+{
+  "entities": {
+    "orders": {
+      "title": "Production Orders",
+      "description": "Production orders synced between PCP and Produção in real-time",
+      "properties": {
+        "id": { "type": "string" },
+        "numero": { "type": "string" },
+        "descricao": { "type": "string" },
+        "codigo": { "type": "string" },
+        "lote": { "type": "string" },
+        "observacao": { "type": "string" },
+        "data_entrega": { "type": "string" },
+        "status": { "type": "string" },
+        "status_nomus": { "type": "string" },
+        "quantidade": { "type": "number" },
+        "qtde_produzida": { "type": "number" },
+        "categoria": { "type": "string" },
+        "motivo_atraso": { "type": "string" },
+        "favorito": { "type": "boolean" },
+        "pausada": { "type": "boolean" },
+        "prioridade": { "type": "string" },
+        "data_atualizacao": { "type": "string" }
+      }
+    },
+    "messages": {
+      "title": "Chat Messages",
+      "description": "Realtime communication messages between PCP and Produção",
+      "properties": {
+        "id": { "type": "string" },
+        "orderId": { "type": "string" },
+        "orderNumero": { "type": "string" },
+        "orderDesc": { "type": "string" },
+        "from": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "readByPcp": { "type": "boolean" },
+        "readByProducao": { "type": "boolean" },
+        "arquivada": { "type": "boolean" }
+      }
+    }
+  }
+}

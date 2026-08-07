@@ -1,0 +1,160 @@
+import { CategoryInfo, OrderStatusInfo, OrderStatusKey } from './types';
+
+export const STATUS_CONFIG: Record<OrderStatusKey, OrderStatusInfo> = {
+  atrasada: {
+    label: 'Atrasada',
+    short: 'ATR',
+    color: '#EF4444',
+    bgColorDark: '#1F0A0A',
+    bgColorLight: '#FEF2F2',
+    borderColorDark: '#7F1D1D40',
+    borderColorLight: '#FCA5A560',
+    icon: '⚠️',
+    step: 1,
+  },
+  hoje: {
+    label: 'Hoje',
+    short: 'HOJ',
+    color: '#A855F7',
+    bgColorDark: '#1A0B2E',
+    bgColorLight: '#FAF5FF',
+    borderColorDark: '#581C8740',
+    borderColorLight: '#E9D5FF60',
+    icon: '📅',
+    step: 2,
+  },
+  produzindo_hoje: {
+    label: 'Produzindo Hoje',
+    short: 'PRH',
+    color: '#06B6D4',
+    bgColorDark: '#041C24',
+    bgColorLight: '#ECFEFF',
+    borderColorDark: '#164E6340',
+    borderColorLight: '#67E8F960',
+    icon: '⚙️',
+    step: 3,
+  },
+  falta_embalar: {
+    label: 'Falta Embalar',
+    short: 'EMB',
+    color: '#F59E0B',
+    bgColorDark: '#261803',
+    bgColorLight: '#FFFBEB',
+    borderColorDark: '#78350F40',
+    borderColorLight: '#FDE68A60',
+    icon: '📦',
+    step: 4,
+  },
+  embalada: {
+    label: 'Embalada',
+    short: 'EMB✓',
+    color: '#10B981',
+    bgColorDark: '#042115',
+    bgColorLight: '#ECFDF5',
+    borderColorDark: '#064E3B40',
+    borderColorLight: '#6EE7B760',
+    icon: '✅',
+    step: 5,
+  },
+  planejada: {
+    label: 'Planejada',
+    short: 'PLA',
+    color: '#F97316',
+    bgColorDark: '#210E04',
+    bgColorLight: '#FFF7ED',
+    borderColorDark: '#7C2D1240',
+    borderColorLight: '#FDBA7460',
+    icon: '◎',
+    step: 0,
+  },
+  req_parcial: {
+    label: 'Req. Parcial',
+    short: 'R/P',
+    color: '#EAB308',
+    bgColorDark: '#211C04',
+    bgColorLight: '#FEFCE8',
+    borderColorDark: '#713F1240',
+    borderColorLight: '#FDE04760',
+    icon: '◑',
+    step: 0,
+  },
+  req_total: {
+    label: 'Req. Total',
+    short: 'R/T',
+    color: '#3B82F6',
+    bgColorDark: '#091A3A',
+    bgColorLight: '#EFF6FF',
+    borderColorDark: '#1E3A8A40',
+    borderColorLight: '#93C5FD60',
+    icon: '◈',
+    step: 0,
+  },
+  liberada: {
+    label: 'Liberada',
+    short: 'LIB',
+    color: '#059669',
+    bgColorDark: '#042115',
+    bgColorLight: '#ECFDF5',
+    borderColorDark: '#064E3B40',
+    borderColorLight: '#6EE7B760',
+    icon: '▶',
+    step: 0,
+  },
+};
+
+export const S_ORDER: OrderStatusKey[] = [
+  'atrasada',
+  'hoje',
+  'produzindo_hoje',
+  'falta_embalar',
+  'embalada',
+  'planejada',
+  'req_parcial',
+  'req_total',
+  'liberada',
+];
+
+export const MANUAL_STATUS: OrderStatusKey[] = [
+  'produzindo_hoje',
+  'falta_embalar',
+  'embalada',
+  'atrasada',
+];
+
+export const NOMUS_MAP: Record<string, OrderStatusKey> = {
+  planejada: 'planejada',
+  'requisitada parcialmente': 'req_parcial',
+  'requisitada totalmente': 'req_total',
+  liberada: 'liberada',
+  'em producao': 'produzindo_hoje',
+  'em produção': 'produzindo_hoje',
+};
+
+export const CATEGORIES: CategoryInfo[] = [
+  { key: 'todas', label: 'Todas', icon: '◻' },
+  { key: 'folha', label: 'Folhas', icon: '🪟' },
+  { key: 'batente', label: 'Batentes', icon: '🚪' },
+  { key: 'porta_correr', label: 'Portas de Correr', icon: '↔' },
+  { key: 'porta_giratoria', label: 'Portas Giratórias', icon: '↻' },
+  { key: 'porta_vai_vem', label: 'Portas Vai-Vem', icon: '↕' },
+  { key: 'porta_office', label: 'Office Doors', icon: '🏢' },
+  { key: 'trilho', label: 'Trilhos', icon: '═' },
+  { key: 'quadro_comando', label: 'Quadros de Comando', icon: '⚡' },
+  { key: 'outros', label: 'Outros Acessórios', icon: '📦' },
+];
+
+export const CREDS = {
+  pcp: 'pcp01',
+  producao: 'metalrib01',
+};
+
+export const COMMON_DELAY_REASONS = [
+  'Aguardando matéria-prima (aço/inox/isolamento)',
+  'Falta de acessórios / ferragens',
+  'Gargalo em dobra/corte de chapa',
+  'Manutenção corretiva de máquina',
+  'Priorização de emergência de outro lote',
+  'Aguardando aprovação técnica/projeto',
+  'Atraso na pintura / acabamento',
+  'Sobrecarga de capacidade de fábrica',
+];

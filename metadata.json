@@ -1,0 +1,6 @@
+{
+  "name": "PCP & Status de Ordens de Produção",
+  "description": "Sistema de gestão e acompanhamento de ordens de produção (Nomus ERP) com controle de prazos, chat PCP-Produção e análise de atrasos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
