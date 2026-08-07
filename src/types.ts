@@ -53,6 +53,7 @@ export interface ProductionOrder {
   status_nomus: string;
   quantidade: number;
   qtde_produzida: number;
+  unidade?: string;
   categoria: CategoryKey;
   motivo_atraso?: string;
   favorito?: boolean;

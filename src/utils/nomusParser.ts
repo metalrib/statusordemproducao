@@ -80,12 +80,45 @@ export function daysInfo(dateStr: string): { text: string; color: string; days: 
   };
 }
 
+export function normalizeUnidade(umStr?: string, desc?: string): string {
+  if (umStr) {
+    const u = umStr.trim().toLowerCase();
+    if (u === 'pc' || u === 'pcs' || u === 'pç' || u === 'pça' || u === 'peça' || u === 'peças' || u === 'un' || u === 'und' || u === 'unid' || u === 'unidade' || u === 'unidades') {
+      return 'pc';
+    }
+    if (u === 'm2' || u === 'm²' || u === 'sqm') return 'm²';
+    if (u === 'mm2' || u === 'mm²') return 'mm²';
+    if (u === 'm' || u === 'metro' || u === 'metros' || u === 'ml') return 'm';
+    if (u === 'kg' || u === 'kilo' || u === 'kilos') return 'kg';
+    if (u === 'cx' || u === 'caixa') return 'cx';
+    if (u) return u;
+  }
+
+  if (desc) {
+    const d = desc.toUpperCase();
+    if (d.includes('MM2') || d.includes('MM²')) return 'mm²';
+    if (d.includes('M2') || d.includes('M²') || d.includes('METRO QUADRADO')) return 'm²';
+  }
+
+  return 'pc';
+}
+
+export function detectUnidade(desc: string, qty?: number): string {
+  return normalizeUnidade(undefined, desc);
+}
+
+export function formatQuantity(val: number): string {
+  if (val === undefined || val === null || isNaN(val)) return '0';
+  if (Number.isInteger(val)) return val.toString();
+  return val.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
 export function parseNomusNumber(valStr: string): number {
   if (!valStr) return 0;
   let str = valStr.trim();
   if (!str) return 0;
 
-  // Remove currency, spaces, or extra non-numeric characters keeping digits, dot, comma, minus
+  // Keep only digits, dot, comma, minus
   str = str.replace(/[^0-9.,-]/g, '');
   if (!str) return 0;
 
@@ -103,17 +136,15 @@ export function parseNomusNumber(valStr: string): number {
       str = str.replace(/,/g, '');
     }
   } else if (hasComma) {
-    // e.g. "4,000" or "4,00" or "100,00" -> comma is decimal point in BR
+    // Brazilian format with decimal comma: "972,00" -> "972.00", "48,00" -> "48.00", "1,66" -> "1.66"
     str = str.replace(',', '.');
   } else if (hasDot) {
-    // e.g. "4.000" or "4.00" or "2.000" or "100.000" or "1.000.000"
-    const dotCount = (str.match(/\./g) || []).length;
-    if (dotCount > 1) {
-      // Multiple dots e.g. 1.000.000 -> thousand separators
+    const parts = str.split('.');
+    if (parts.length > 2) {
       str = str.replace(/\./g, '');
-    } else {
-      // Single dot: e.g. "4.000", "2.000", "1.000" -> in Nomus exports single dot represents decimals
-      // parseFloat("4.000") = 4, parseFloat("2.000") = 2, parseFloat("1.000") = 1
+    } else if (parts.length === 2 && parts[1].length === 3) {
+      // e.g. "1.000" in Brazilian notation
+      str = str.replace('.', '');
     }
   }
 
@@ -125,16 +156,11 @@ export function sanitizeOrderQuantity(order: ProductionOrder): ProductionOrder {
   let q = order.quantidade;
   let qp = order.qtde_produzida;
 
-  // Auto-correct previously parsed corrupt values like 1000, 2000, 4000, 400, 100
-  if (q >= 1000 && q % 1000 === 0) {
-    q = q / 1000;
-  } else if (q >= 100 && q % 100 === 0 && q < 1000) {
+  // Clean up corrupted values resulting from earlier parsing bugs (e.g. 97200, 4800, 400)
+  if (q >= 100 && q % 100 === 0 && Number.isInteger(q)) {
     q = q / 100;
   }
-
-  if (qp >= 1000 && qp % 1000 === 0) {
-    qp = qp / 1000;
-  } else if (qp >= 100 && qp % 100 === 0 && qp < 1000 && qp > q) {
+  if (qp >= 100 && qp % 100 === 0 && Number.isInteger(qp)) {
     qp = qp / 100;
   }
 
@@ -142,10 +168,13 @@ export function sanitizeOrderQuantity(order: ProductionOrder): ProductionOrder {
     qp = q;
   }
 
+  const unidade = normalizeUnidade(order.unidade, order.descricao);
+
   return {
     ...order,
     quantidade: q,
     qtde_produzida: qp,
+    unidade,
   };
 }
 
@@ -154,6 +183,46 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
   const doc = parser.parseFromString(htmlContent, 'text/html');
   const rows = Array.from(doc.querySelectorAll('tr'));
   const orders: ProductionOrder[] = [];
+
+  let colMap = {
+    dt: -1,
+    status: -1,
+    desc: -1,
+    cod: -1,
+    lote: -1,
+    obs: -1,
+    op: -1,
+    qtde: -1,
+    qtdeP: -1,
+    um: -1,
+  };
+
+  // Inspect headers dynamically
+  for (const row of rows) {
+    const headerCells = Array.from(row.querySelectorAll('th, td')).map((x) =>
+      (x.textContent || '').trim().toLowerCase()
+    );
+    const headerText = headerCells.join(' ');
+
+    if (
+      (headerText.includes('ordem') || headerText.includes('op')) &&
+      (headerText.includes('descri') || headerText.includes('produto') || headerText.includes('item'))
+    ) {
+      headerCells.forEach((text, idx) => {
+        if (text.includes('entrega') || text.includes('previsão') || text === 'data') colMap.dt = idx;
+        else if (text.includes('status') || text.includes('situação')) colMap.status = idx;
+        else if (text.includes('descri') || text.includes('produto') || text.includes('item')) colMap.desc = idx;
+        else if (text.includes('cód') || text.includes('cod')) colMap.cod = idx;
+        else if (text.includes('lote')) colMap.lote = idx;
+        else if (text.includes('obs') || text.includes('observa')) colMap.obs = idx;
+        else if (text.includes('op') || text.includes('ordem')) colMap.op = idx;
+        else if (text.includes('um') || text.includes('u.m') || text.includes('unidade') || text.includes('unid')) colMap.um = idx;
+        else if (text.includes('produz') || text.includes('execut')) colMap.qtdeP = idx;
+        else if (text.includes('qtde') || text.includes('quant') || text.includes('qtd')) colMap.qtde = idx;
+      });
+      break;
+    }
+  }
 
   let lastDate = '';
   let lastStatus = '';
@@ -175,32 +244,27 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
       continue;
     }
 
-    // Standard Nomus export mapping:
-    // Cell 0: Date
-    // Cell 1: Status
-    // Cell 2: Description
-    // Cell 3: Code
-    // Cell 4: Lot
-    // Cell 5: Observation
-    // Cell 6: OP Number (e.g., OP 017506-01)
-    // Cell 7: Quantity
-    // Cell 8: Quantity Produced
-    let dt = cells[0] || '';
-    let st = cells[1] || '';
-    let desc = cells[2] || '';
-    let cod = cells[3] || '';
-    let lote = cells[4] || '';
-    let obs = cells[5] || '';
-    let op = cells[6] || '';
-    let qtdeStr = cells[7] || '0';
-    let qtdePStr = cells[8] || '0';
+    let dt = colMap.dt !== -1 ? cells[colMap.dt] || '' : cells[0] || '';
+    let st = colMap.status !== -1 ? cells[colMap.status] || '' : cells[1] || '';
+    let desc = colMap.desc !== -1 ? cells[colMap.desc] || '' : cells[2] || '';
+    let cod = colMap.cod !== -1 ? cells[colMap.cod] || '' : cells[3] || '';
+    let lote = colMap.lote !== -1 ? cells[colMap.lote] || '' : cells[4] || '';
+    let obs = colMap.obs !== -1 ? cells[colMap.obs] || '' : cells[5] || '';
+    let op = colMap.op !== -1 ? cells[colMap.op] || '' : cells[6] || '';
+    let qtdeStr = colMap.qtde !== -1 ? cells[colMap.qtde] || '0' : cells[7] || '0';
+    let qtdePStr = colMap.qtdeP !== -1 ? cells[colMap.qtdeP] || '0' : cells[8] || '0';
+    let umRaw = colMap.um !== -1 ? cells[colMap.um] || '' : '';
 
-    // If cells length is 7 or 8, find OP column
+    // If OP column not identified properly, search for cell starting with OP
     if (!op || !op.toUpperCase().includes('OP')) {
-      const opIndex = cells.findIndex((c) => c.toUpperCase().startsWith('OP ') || c.toUpperCase().startsWith('OP-') || c.toUpperCase().startsWith('OP0'));
+      const opIndex = cells.findIndex(
+        (c) =>
+          c.toUpperCase().startsWith('OP ') ||
+          c.toUpperCase().startsWith('OP-') ||
+          c.toUpperCase().startsWith('OP0')
+      );
       if (opIndex !== -1) {
         op = cells[opIndex];
-        // Shift parsing context dynamically
         if (opIndex > 0) qtdeStr = cells[opIndex + 1] || qtdeStr;
         if (opIndex > 1) qtdePStr = cells[opIndex + 2] || qtdePStr;
       }
@@ -243,6 +307,8 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
 
     const q = parseNomusNumber(qtdeStr);
     const qp = parseNomusNumber(qtdePStr);
+    const finalDesc = desc || lastDesc || 'Sem descrição';
+    const unidad = normalizeUnidade(umRaw, finalDesc);
 
     const opClean = op.replace(/\s+/g, ' ').trim();
     const opId = opClean.replace(/\s+/g, '-').replace('/', '-');
@@ -250,7 +316,7 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
     const newOrder: ProductionOrder = {
       id: opId,
       numero: opClean,
-      descricao: desc || lastDesc || 'Sem descrição',
+      descricao: finalDesc,
       codigo: cod || lastCod || '—',
       lote: lote || '',
       observacao: obs || '',
@@ -259,7 +325,8 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
       status_nomus: currentNomusStatus || 'Planejada',
       quantidade: q,
       qtde_produzida: qp,
-      categoria: detectCat(desc || lastDesc),
+      unidade: unidad,
+      categoria: detectCat(finalDesc),
       motivo_atraso: '',
       favorito: false,
       pausada: false,

@@ -70,7 +70,7 @@ export default function App() {
     setUploadedFileName(fileName);
 
     // Initial fallback from storage
-    const initialOrders = storage.getOrders();
+    const initialOrders = storage.getOrders().map(sanitizeOrderQuantity);
     const initialMessages = storage.getMessages();
     setOrders(initialOrders);
     setMessages(initialMessages);
@@ -116,14 +116,15 @@ export default function App() {
   };
 
   const handleRefreshDataFromStorage = () => {
-    setOrders(storage.getOrders());
+    setOrders(storage.getOrders().map(sanitizeOrderQuantity));
     setMessages(storage.getMessages());
     setUploadedFileName(storage.getUploadedFileName());
   };
 
   // Import Nomus ERP HTML Handler
-  const handleImportOrders = (importedOrders: ProductionOrder[], fileName?: string) => {
+  const handleImportOrders = (rawImportedOrders: ProductionOrder[], fileName?: string) => {
     const prevOrders = orders;
+    const importedOrders = rawImportedOrders.map(sanitizeOrderQuantity);
 
     // Merge strategy: Keep existing manual statuses, delay reasons, favorites, and pauses
     const mergedList = importedOrders.map((imported) => {

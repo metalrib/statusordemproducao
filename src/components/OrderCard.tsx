@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { OrderStatusKey, ProductionOrder, Role } from '../types';
 import { COMMON_DELAY_REASONS, MANUAL_STATUS, STATUS_CONFIG } from '../constants';
-import { daysInfo } from '../utils/nomusParser';
+import { daysInfo, formatQuantity, detectUnidade } from '../utils/nomusParser';
 
 interface OrderCardProps {
   order: ProductionOrder;
@@ -140,10 +140,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({
               className="text-xl font-black font-mono leading-none"
               style={{ color: statusInfo.color }}
             >
-              {order.quantidade}
+              {formatQuantity(order.quantidade)}
             </div>
             <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-              {order.qtde_produzida > 0 ? `${order.qtde_produzida}/${order.quantidade} prod.` : 'unid.'}
+              {order.qtde_produzida > 0
+                ? `${formatQuantity(order.qtde_produzida)}/${formatQuantity(order.quantidade)} ${order.unidade || 'pc'} prod.`
+                : (order.unidade || detectUnidade(order.descricao, order.quantidade))}
             </div>
           </div>
         </div>

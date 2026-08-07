@@ -2,6 +2,7 @@ import React from 'react';
 import { Printer, Download, X, FileSpreadsheet, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 import { ProductionOrder } from '../types';
 import { STATUS_CONFIG } from '../constants';
+import { formatQuantity, detectUnidade } from '../utils/nomusParser';
 
 interface ExportPrintModalProps {
   isOpen: boolean;
@@ -176,7 +177,9 @@ export const ExportPrintModal: React.FC<ExportPrintModalProps> = ({
                       <td className="p-2 font-medium">{o.descricao}</td>
                       <td className="p-2 font-mono text-slate-500">{o.codigo}</td>
                       <td className="p-2 font-bold">{o.data_entrega || '—'}</td>
-                      <td className="p-2 font-bold font-mono">{o.quantidade}</td>
+                      <td className="p-2 font-bold font-mono">
+                        {formatQuantity(o.quantidade)} {o.unidade || detectUnidade(o.descricao, o.quantidade)}
+                      </td>
                       <td className="p-2">
                         <span
                           className="px-2 py-0.5 rounded text-[10px] font-bold uppercase print:border print:border-black print:bg-transparent print:text-black"
