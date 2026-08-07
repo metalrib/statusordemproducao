@@ -80,9 +80,11 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       }`}
       style={{
         backgroundColor: darkMode ? statusInfo.bgColorDark : statusInfo.bgColorLight,
-        borderColor: unreadCount > 0 ? '#EF4444' : (darkMode ? statusInfo.borderColorDark : statusInfo.borderColorLight),
-        borderLeftWidth: '5px',
+        borderTopColor: unreadCount > 0 ? '#EF4444' : (darkMode ? statusInfo.borderColorDark : statusInfo.borderColorLight),
+        borderRightColor: unreadCount > 0 ? '#EF4444' : (darkMode ? statusInfo.borderColorDark : statusInfo.borderColorLight),
+        borderBottomColor: unreadCount > 0 ? '#EF4444' : (darkMode ? statusInfo.borderColorDark : statusInfo.borderColorLight),
         borderLeftColor: statusInfo.color,
+        borderLeftWidth: '5px',
       }}
     >
       {/* Card Header & Main Specs */}
