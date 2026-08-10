@@ -837,8 +837,31 @@ export default function App() {
                       <div className="flex justify-end items-center gap-2 pt-1 text-[11px]">
                         <button
                           onClick={() => {
-                            const target = orders.find((o) => o.numero === msg.orderNumero);
-                            if (target) handleOpenChat(target);
+                            const target =
+                              orders.find(
+                                (o) =>
+                                  o.id === msg.orderId ||
+                                  o.numero === msg.orderNumero ||
+                                  o.id === (msg.orderNumero || '').replace(/\s+/g, '-') ||
+                                  (o.numero || '').replace(/\s+/g, '').toLowerCase() === (msg.orderNumero || '').replace(/\s+/g, '').toLowerCase()
+                              ) || {
+                                id: msg.orderId || (msg.orderNumero || '').replace(/\s+/g, '-'),
+                                numero: msg.orderNumero,
+                                descricao: msg.orderDesc || '',
+                                codigo: '',
+                                lote: '',
+                                observacao: '',
+                                data_entrega: '',
+                                status: 'planejada' as const,
+                                status_nomus: 'Planejada',
+                                quantidade: 1,
+                                qtde_produzida: 0,
+                                categoria: 'outros' as const,
+                                motivo_atraso: '',
+                                favorito: false,
+                                pausada: false,
+                              };
+                            handleOpenChat(target);
                           }}
                           className="px-3 py-1.5 bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-600/30 border border-blue-200 dark:border-blue-500/30 rounded-lg font-bold cursor-pointer transition-colors"
                         >
