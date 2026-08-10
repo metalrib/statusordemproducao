@@ -118,7 +118,6 @@ export function parseNomusNumber(valStr: string): number {
   let str = valStr.trim();
   if (!str) return 0;
 
-  // Keep only digits, dot, comma, minus
   str = str.replace(/[^0-9.,-]/g, '');
   if (!str) return 0;
 
@@ -129,21 +128,17 @@ export function parseNomusNumber(valStr: string): number {
     const lastDot = str.lastIndexOf('.');
     const lastComma = str.lastIndexOf(',');
     if (lastComma > lastDot) {
-      // Brazilian format: 1.250,00 -> dot is thousands, comma is decimal
       str = str.replace(/\./g, '').replace(',', '.');
     } else {
-      // US format: 1,250.00
       str = str.replace(/,/g, '');
     }
   } else if (hasComma) {
-    // Brazilian format with decimal comma: "972,00" -> "972.00", "48,00" -> "48.00", "1,66" -> "1.66"
     str = str.replace(',', '.');
   } else if (hasDot) {
     const parts = str.split('.');
     if (parts.length > 2) {
       str = str.replace(/\./g, '');
     } else if (parts.length === 2 && parts[1].length === 3) {
-      // e.g. "1.000" in Brazilian notation
       str = str.replace('.', '');
     }
   }
@@ -164,6 +159,36 @@ const INVALID_DESC_KEYWORDS = [
   'planejada',
   'suspensa',
   'status',
+  'situação',
+  'situacao',
+  'finalizada',
+  'concluída',
+  'concluida',
+  'aguardando liberação',
+  'aguardando liberacao',
+];
+
+const KNOWN_NOMUS_STATUS_KEYWORDS = [
+  'liberada',
+  'em produção',
+  'em producao',
+  'requisitada totalmente',
+  'requisitada parcialmente',
+  'planejada',
+  'confirmada',
+  'encerrada',
+  'finalizada',
+  'concluída',
+  'concluida',
+  'suspensa',
+  'cancelada',
+  'em elaboração',
+  'em elaboracao',
+  'aguardando liberação',
+  'aguardando liberacao',
+  'em separação',
+  'em separacao',
+  'terminada',
 ];
 
 function isCodeString(str: string): boolean {
@@ -177,15 +202,27 @@ function isInvalidDesc(str: string): boolean {
   const s = str.toLowerCase().trim();
   if (s.length < 2) return true;
   if (isCodeString(s)) return true;
-  if (INVALID_DESC_KEYWORDS.some((k) => s === k || s === k + 's')) return true;
+  if (INVALID_DESC_KEYWORDS.some((k) => s === k || s === k + 's' || s.startsWith(k))) return true;
   return false;
+}
+
+function findStatusInRow(cells: string[]): string {
+  for (const cell of cells) {
+    if (!cell) continue;
+    const lower = cell.toLowerCase().trim();
+    for (const kw of KNOWN_NOMUS_STATUS_KEYWORDS) {
+      if (lower === kw || lower.startsWith(kw)) {
+        return cell.trim();
+      }
+    }
+  }
+  return '';
 }
 
 export function sanitizeOrderQuantity(order: ProductionOrder): ProductionOrder {
   let q = order.quantidade;
   let qp = order.qtde_produzida;
 
-  // Fix previously corrupted values in storage (e.g. 97200 -> 972, 4800 -> 48, 2000 -> 20)
   if (q >= 1000 && q % 100 === 0 && Number.isInteger(q)) {
     q = q / 100;
   }
@@ -201,7 +238,6 @@ export function sanitizeOrderQuantity(order: ProductionOrder): ProductionOrder {
   let desc = order.descricao || '';
   let cod = order.codigo || '';
 
-  // If description was mistakenly set to a code string or invalid keyword
   if (isInvalidDesc(desc)) {
     if (cod && !isInvalidDesc(cod)) {
       desc = cod;
@@ -248,7 +284,7 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
     um: -1,
   };
 
-  // Inspect headers dynamically
+  // Inspect headers dynamically across table rows
   for (const row of rows) {
     const headerCells = Array.from(row.querySelectorAll('th, td')).map((x) =>
       (x.textContent || '')
@@ -257,25 +293,44 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
         .trim()
         .toLowerCase()
     );
-    const headerText = headerCells.join(' ');
+    if (headerCells.length < 3) continue;
 
+    const headerText = headerCells.join(' ');
     if (
-      (headerText.includes('ordem') || headerText.includes('op')) &&
-      (headerText.includes('descri') || headerText.includes('produto') || headerText.includes('item'))
+      headerText.includes('ordem') ||
+      headerText.includes('op') ||
+      headerText.includes('status') ||
+      headerText.includes('situacao') ||
+      headerText.includes('descri') ||
+      headerText.includes('produto')
     ) {
       headerCells.forEach((text, idx) => {
-        if (text.includes('entrega') || text.includes('previsao') || text === 'data') colMap.dt = idx;
-        else if (text.includes('status') || text.includes('situacao')) colMap.status = idx;
-        else if (text.includes('descri') || text.includes('produto') || text.includes('item')) colMap.desc = idx;
-        else if (text.includes('cod') || text.includes('codigo')) colMap.cod = idx;
-        else if (text.includes('lote')) colMap.lote = idx;
-        else if (text.includes('obs') || text.includes('observa')) colMap.obs = idx;
-        else if ((text.includes('op') || text.includes('ordem')) && !text.includes('entrega')) colMap.op = idx;
-        else if (text.includes('um') || text.includes('u.m') || text.includes('unidade') || text.includes('unid')) colMap.um = idx;
-        else if (text.includes('produz') || text.includes('execut')) colMap.qtdeP = idx;
-        else if (text.includes('qtde') || text.includes('quant') || text.includes('qtd')) colMap.qtde = idx;
+        if (text.includes('entrega') || text.includes('previsao') || text === 'data' || text.startsWith('dt.')) {
+          if (colMap.dt === -1) colMap.dt = idx;
+        } else if (text.includes('status') || text.includes('situacao') || text.includes('situa')) {
+          if (colMap.status === -1) colMap.status = idx;
+        } else if (text.includes('descri') || text.includes('produto') || text.includes('item')) {
+          if (colMap.desc === -1) colMap.desc = idx;
+        } else if (text.includes('cod') || text.includes('codigo')) {
+          if (colMap.cod === -1) colMap.cod = idx;
+        } else if (text.includes('lote')) {
+          if (colMap.lote === -1) colMap.lote = idx;
+        } else if (text.includes('obs') || text.includes('observa')) {
+          if (colMap.obs === -1) colMap.obs = idx;
+        } else if ((text.includes('op') || text.includes('ordem') || text.includes('num. op')) && !text.includes('entrega')) {
+          if (colMap.op === -1) colMap.op = idx;
+        } else if (text.includes('produz') || text.includes('execut')) {
+          if (colMap.qtdeP === -1) colMap.qtdeP = idx;
+        } else if (text.includes('qtde') || text.includes('quant') || text.includes('qtd')) {
+          if (colMap.qtde === -1) colMap.qtde = idx;
+        } else if (text.includes('um') || text.includes('u.m') || text.includes('unidade') || text.includes('unid')) {
+          if (colMap.um === -1) colMap.um = idx;
+        }
       });
-      break;
+
+      if (colMap.op !== -1 || colMap.status !== -1 || colMap.desc !== -1) {
+        break;
+      }
     }
   }
 
@@ -291,59 +346,40 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
       (x.textContent || '').trim()
     );
 
-    if (cells.length < 5) continue;
+    if (cells.length < 3) continue;
 
-    // Check if header row
     const rowText = cells.join(' ').toLowerCase();
+
+    // Skip header rows
     if (
-      rowText.includes('status') &&
+      (rowText.includes('status') || rowText.includes('situacao')) &&
       (rowText.includes('descri') || rowText.includes('produto')) &&
       (rowText.includes('ordem') || rowText.includes('op'))
     ) {
       continue;
     }
+    if (rowText.includes('previsao de entrega') && (rowText.includes('situacao') || rowText.includes('status'))) {
+      continue;
+    }
 
-    // Find cell containing OP identifier (e.g. "OP 021527-01")
-    let opIndex = cells.findIndex(
-      (c) =>
-        c.toUpperCase().startsWith('OP ') ||
-        c.toUpperCase().startsWith('OP-') ||
-        c.toUpperCase().startsWith('OP0')
-    );
+    // 1. Locate OP
+    let op = colMap.op !== -1 && cells[colMap.op] ? cells[colMap.op] : '';
+    let opIndex = colMap.op !== -1 && op ? colMap.op : -1;
 
-    let dt = '';
-    let st = '';
-    let desc = '';
-    let cod = '';
-    let lote = '';
-    let obs = '';
-    let op = '';
-    let qtdeStr = '0';
-    let qtdePStr = '0';
-    let umRaw = '';
-
-    if (opIndex !== -1) {
-      op = cells[opIndex];
-      obs = opIndex >= 1 ? cells[opIndex - 1] || '' : '';
-      lote = opIndex >= 2 ? cells[opIndex - 2] || '' : '';
-      cod = opIndex >= 3 ? cells[opIndex - 3] || '' : '';
-      desc = opIndex >= 4 ? cells[opIndex - 4] || '' : '';
-      st = opIndex >= 5 ? cells[opIndex - 5] || '' : '';
-      dt = opIndex >= 6 ? cells[opIndex - 6] || '' : '';
-
-      qtdeStr = opIndex + 1 < cells.length ? cells[opIndex + 1] : '0';
-      qtdePStr = opIndex + 2 < cells.length ? cells[opIndex + 2] : '0';
-    } else {
-      dt = colMap.dt !== -1 ? cells[colMap.dt] || '' : cells[0] || '';
-      st = colMap.status !== -1 ? cells[colMap.status] || '' : cells[1] || '';
-      desc = colMap.desc !== -1 ? cells[colMap.desc] || '' : cells[2] || '';
-      cod = colMap.cod !== -1 ? cells[colMap.cod] || '' : cells[3] || '';
-      lote = colMap.lote !== -1 ? cells[colMap.lote] || '' : cells[4] || '';
-      obs = colMap.obs !== -1 ? cells[colMap.obs] || '' : cells[5] || '';
-      op = colMap.op !== -1 ? cells[colMap.op] || '' : cells[6] || '';
-      qtdeStr = colMap.qtde !== -1 ? cells[colMap.qtde] || '0' : cells[7] || '0';
-      qtdePStr = colMap.qtdeP !== -1 ? cells[colMap.qtdeP] || '0' : cells[8] || '0';
-      umRaw = colMap.um !== -1 ? cells[colMap.um] || '' : '';
+    if (!op || (!op.toUpperCase().includes('OP') && !/^\d{5,}/.test(op))) {
+      opIndex = cells.findIndex((c) => {
+        const cu = c.toUpperCase().trim();
+        return (
+          cu.startsWith('OP ') ||
+          cu.startsWith('OP-') ||
+          cu.startsWith('OP/') ||
+          cu.startsWith('OP0') ||
+          /^\d{5,7}(-\d{1,2})?$/.test(cu)
+        );
+      });
+      if (opIndex !== -1) {
+        op = cells[opIndex];
+      }
     }
 
     if (!op || (!op.toUpperCase().includes('OP') && !op.match(/^[0-9]{5,}/))) {
@@ -355,18 +391,45 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
 
     rawCount++;
 
-    // Validate description and code
+    // 2. Extract Status Nomus
+    let st = colMap.status !== -1 && cells[colMap.status] ? cells[colMap.status] : '';
+    if (!st || isInvalidDesc(st)) {
+      const foundSt = findStatusInRow(cells);
+      if (foundSt) {
+        st = foundSt;
+      }
+    }
+
+    // 3. Extract Delivery Date
+    let dt = colMap.dt !== -1 && cells[colMap.dt] ? cells[colMap.dt] : '';
+    if (!dt || !/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(dt.trim())) {
+      const dateCell = cells.find((c) => /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(c.trim()));
+      if (dateCell) dt = dateCell;
+    }
+
+    // 4. Extract Description & Code
+    let desc = colMap.desc !== -1 && cells[colMap.desc] ? cells[colMap.desc] : '';
+    let cod = colMap.cod !== -1 && cells[colMap.cod] ? cells[colMap.cod] : '';
+
     if (isInvalidDesc(desc)) {
-      if (!isInvalidDesc(cod)) {
+      if (cod && !isInvalidDesc(cod)) {
         desc = cod;
         cod = '';
-      } else if (!isInvalidDesc(lote) && lote.length > 8) {
-        desc = lote;
-        lote = '';
-      } else if (!isInvalidDesc(lastDesc)) {
-        desc = lastDesc;
       } else {
-        desc = 'Sem descrição';
+        const textCell = cells.find((c) => {
+          if (!c || c.length < 3) return false;
+          if (isInvalidDesc(c)) return false;
+          if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(c)) return false;
+          if (c.toUpperCase().includes('OP')) return false;
+          return true;
+        });
+        if (textCell) {
+          desc = textCell;
+        } else if (lastDesc && !isInvalidDesc(lastDesc)) {
+          desc = lastDesc;
+        } else {
+          desc = 'Sem descrição';
+        }
       }
     }
 
@@ -378,14 +441,37 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
       }
     }
 
+    // 5. Extract Lot & Observation
+    let lote = colMap.lote !== -1 && cells[colMap.lote] ? cells[colMap.lote] : '';
+    let obs = colMap.obs !== -1 && cells[colMap.obs] ? cells[colMap.obs] : '';
+
+    // 6. Extract Quantities
+    let qtdeStr = colMap.qtde !== -1 && cells[colMap.qtde] ? cells[colMap.qtde] : '';
+    let qtdePStr = colMap.qtdeP !== -1 && cells[colMap.qtdeP] ? cells[colMap.qtdeP] : '';
+    let umRaw = colMap.um !== -1 && cells[colMap.um] ? cells[colMap.um] : '';
+
+    if (!qtdeStr && opIndex !== -1 && opIndex + 1 < cells.length) {
+      qtdeStr = cells[opIndex + 1];
+    }
+    if (!qtdePStr && opIndex !== -1 && opIndex + 2 < cells.length) {
+      qtdePStr = cells[opIndex + 2];
+    }
+
     if (dt) lastDate = dt;
     if (st && !isInvalidDesc(st)) lastStatus = st;
     if (desc && !isInvalidDesc(desc)) lastDesc = desc;
     if (cod && isCodeString(cod)) lastCod = cod;
 
-    const currentNomusStatus = st || lastStatus;
+    const currentNomusStatus = st || lastStatus || 'Liberada';
     const nomusKey = currentNomusStatus.toLowerCase().trim();
-    let calculatedStatus: OrderStatusKey = NOMUS_MAP[nomusKey] || 'planejada';
+
+    let calculatedStatus: OrderStatusKey = 'planejada';
+    for (const [k, v] of Object.entries(NOMUS_MAP)) {
+      if (nomusKey.includes(k) || k.includes(nomusKey)) {
+        calculatedStatus = v;
+        break;
+      }
+    }
 
     const deliveryDateStr = dt || lastDate;
     const parsedDate = parseDateBR(deliveryDateStr);
@@ -397,9 +483,20 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
       const todayEnd = new Date();
       todayEnd.setHours(23, 59, 59, 999);
 
-      if (parsedDate < todayStart) {
+      if (
+        parsedDate < todayStart &&
+        calculatedStatus !== 'embalada' &&
+        calculatedStatus !== 'produzindo_hoje' &&
+        calculatedStatus !== 'falta_embalar'
+      ) {
         calculatedStatus = 'atrasada';
-      } else if (parsedDate >= todayStart && parsedDate <= todayEnd) {
+      } else if (
+        parsedDate >= todayStart &&
+        parsedDate <= todayEnd &&
+        calculatedStatus !== 'embalada' &&
+        calculatedStatus !== 'produzindo_hoje' &&
+        calculatedStatus !== 'falta_embalar'
+      ) {
         calculatedStatus = 'hoje';
       }
     }
@@ -422,7 +519,7 @@ export function parseNomusHtml(htmlContent: string): { orders: ProductionOrder[]
       observacao: obs || '',
       data_entrega: deliveryDateStr || '',
       status: calculatedStatus,
-      status_nomus: currentNomusStatus || 'Planejada',
+      status_nomus: currentNomusStatus,
       quantidade: q,
       qtde_produzida: qp,
       unidade: unidad,

@@ -126,15 +126,26 @@ export default function App() {
     const prevOrders = orders;
     const importedOrders = rawImportedOrders.map(sanitizeOrderQuantity);
 
-    // Merge strategy: Keep existing manual statuses, delay reasons, favorites, and pauses
+    const norm = (str: string) => (str || '').replace(/[\s\-_]/g, '').toUpperCase();
+
+    // Merge strategy: Update Nomus data while preserving user notes, favorites, pauses and manual factory status
     const mergedList = importedOrders.map((imported) => {
-      const existing = prevOrders.find((p) => p.numero === imported.numero || p.id === imported.id);
+      const impNormNum = norm(imported.numero);
+      const impNormId = norm(imported.id);
+
+      const existing = prevOrders.find((p) => {
+        const pNormNum = norm(p.numero);
+        const pNormId = norm(p.id);
+        return p.id === imported.id || p.numero === imported.numero || (pNormNum && pNormNum === impNormNum) || (pNormId && pNormId === impNormId);
+      });
+
       if (existing) {
         return {
           ...imported,
           id: existing.id,
           motivo_atraso: existing.motivo_atraso || imported.motivo_atraso || '',
           status: MANUAL_STATUS.includes(existing.status) ? existing.status : imported.status,
+          status_nomus: imported.status_nomus || existing.status_nomus || 'Liberada',
           favorito: existing.favorito || false,
           pausada: existing.pausada || false,
         };
