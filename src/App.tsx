@@ -24,6 +24,7 @@ import {
   subscribeToMessages,
   saveOrderToFirestore,
   saveOrdersBatchToFirestore,
+  syncOrdersCollectionWithFirestore,
   saveMessageToFirestore,
   deleteMessageFromFirestore,
   seedInitialFirestoreData,
@@ -122,7 +123,7 @@ export default function App() {
   };
 
   // Import Nomus ERP HTML Handler
-  const handleImportOrders = (rawImportedOrders: ProductionOrder[], fileName?: string) => {
+  const handleImportOrders = async (rawImportedOrders: ProductionOrder[], fileName?: string) => {
     const prevOrders = orders;
     const importedOrders = rawImportedOrders.map(sanitizeOrderQuantity);
 
@@ -145,7 +146,7 @@ export default function App() {
           id: existing.id,
           motivo_atraso: existing.motivo_atraso || imported.motivo_atraso || '',
           status: MANUAL_STATUS.includes(existing.status) ? existing.status : imported.status,
-          status_nomus: imported.status_nomus || existing.status_nomus || 'Liberada',
+          status_nomus: imported.status_nomus || 'Liberada',
           favorito: existing.favorito || false,
           pausada: existing.pausada || false,
         };
@@ -155,7 +156,7 @@ export default function App() {
 
     setOrders(mergedList);
     storage.saveOrders(mergedList);
-    saveOrdersBatchToFirestore(mergedList);
+    await syncOrdersCollectionWithFirestore(mergedList);
 
     if (fileName) {
       setUploadedFileName(fileName);

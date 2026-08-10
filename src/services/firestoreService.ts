@@ -108,6 +108,43 @@ export async function saveOrdersBatchToFirestore(orders: ProductionOrder[]): Pro
 }
 
 /**
+ * Fully syncs the orders collection in Firestore:
+ * Updates/saves all new orders and DELETES any orders in Firestore that are
+ * no longer present in the newly imported list (e.g. reported/completed OPs).
+ */
+export async function syncOrdersCollectionWithFirestore(newOrders: ProductionOrder[]): Promise<void> {
+  try {
+    const ordersCol = collection(db, ORDERS_COLLECTION);
+    const snapshot = await getDocs(query(ordersCol));
+
+    const newDocIds = new Set(newOrders.map((o) => sanitizeDocId(o.id)));
+
+    // 1. Identify documents in Firestore that are no longer in the new import
+    const docsToDelete: string[] = [];
+    snapshot.forEach((docSnap) => {
+      if (!newDocIds.has(docSnap.id)) {
+        docsToDelete.push(docSnap.id);
+      }
+    });
+
+    // 2. Delete obsolete documents in batches of 400
+    for (let i = 0; i < docsToDelete.length; i += 400) {
+      const chunk = docsToDelete.slice(i, i + 400);
+      const batch = writeBatch(db);
+      chunk.forEach((docId) => {
+        batch.delete(doc(db, ORDERS_COLLECTION, docId));
+      });
+      await batch.commit();
+    }
+
+    // 3. Batch write all new/updated orders
+    await saveOrdersBatchToFirestore(newOrders);
+  } catch (err) {
+    console.error('Failed to sync orders collection with Firestore:', err);
+  }
+}
+
+/**
  * Saves or updates a chat message in Firestore.
  */
 export async function saveMessageToFirestore(message: ChatMessage): Promise<void> {

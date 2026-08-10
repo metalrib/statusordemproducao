@@ -123,11 +123,23 @@ export const MANUAL_STATUS: OrderStatusKey[] = [
 
 export const NOMUS_MAP: Record<string, OrderStatusKey> = {
   planejada: 'planejada',
+  confirmada: 'planejada',
+  'em elaboracao': 'planejada',
+  'em elaboração': 'planejada',
+  'aguardando liberacao': 'planejada',
+  'aguardando liberação': 'planejada',
   'requisitada parcialmente': 'req_parcial',
+  'em separacao': 'req_parcial',
+  'em separação': 'req_parcial',
   'requisitada totalmente': 'req_total',
   liberada: 'liberada',
   'em producao': 'produzindo_hoje',
   'em produção': 'produzindo_hoje',
+  encerrada: 'embalada',
+  finalizada: 'embalada',
+  concluida: 'embalada',
+  concluída: 'embalada',
+  terminada: 'embalada',
 };
 
 export const CATEGORIES: CategoryInfo[] = [
