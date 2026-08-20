@@ -298,6 +298,62 @@ export default function App() {
     deleteMessageFromFirestore(msgId);
   };
 
+  const handleEditMessage = (msgId: string, newText: string) => {
+    let targetMsg: ChatMessage | null = null;
+    const updated = messages.map((m) => {
+      if (m.id === msgId) {
+        targetMsg = { ...m, text: newText, editado: true };
+        return targetMsg;
+      }
+      return m;
+    });
+    setMessages(updated);
+    storage.saveMessages(updated);
+    if (targetMsg) {
+      saveMessageToFirestore(targetMsg);
+    }
+  };
+
+  const handleEditReply = (msgId: string, replyId: string, newText: string) => {
+    let targetMsg: ChatMessage | null = null;
+    const updated = messages.map((m) => {
+      if (m.id === msgId) {
+        targetMsg = {
+          ...m,
+          replies: (m.replies || []).map((r) =>
+            r.id === replyId ? { ...r, text: newText, editado: true } : r
+          ),
+        };
+        return targetMsg;
+      }
+      return m;
+    });
+    setMessages(updated);
+    storage.saveMessages(updated);
+    if (targetMsg) {
+      saveMessageToFirestore(targetMsg);
+    }
+  };
+
+  const handleDeleteReply = (msgId: string, replyId: string) => {
+    let targetMsg: ChatMessage | null = null;
+    const updated = messages.map((m) => {
+      if (m.id === msgId) {
+        targetMsg = {
+          ...m,
+          replies: (m.replies || []).filter((r) => r.id !== replyId),
+        };
+        return targetMsg;
+      }
+      return m;
+    });
+    setMessages(updated);
+    storage.saveMessages(updated);
+    if (targetMsg) {
+      saveMessageToFirestore(targetMsg);
+    }
+  };
+
   // Unread Messages Calculation
   const unreadMap: Record<string, number> = {};
   messages.forEach((m) => {
@@ -832,7 +888,38 @@ export default function App() {
                           {msg.from === 'pcp' ? '📋 PCP:' : '🏭 Produção:'}
                         </strong>{' '}
                         {msg.text}
+                        {msg.editado && (
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal italic ml-1.5">
+                            (editado)
+                          </span>
+                        )}
                       </p>
+
+                      {/* Display replies if any in central de avisos */}
+                      {msg.replies && msg.replies.length > 0 && (
+                        <div className="pl-3 space-y-1.5 border-l-2 border-slate-200 dark:border-slate-800 py-1">
+                          {msg.replies.map((rep) => (
+                            <div
+                              key={rep.id}
+                              className="p-2 rounded-lg bg-slate-50 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-800 dark:text-slate-200"
+                            >
+                              <div className="flex items-center justify-between text-[10px] text-slate-500 mb-0.5">
+                                <span className="font-bold">
+                                  {rep.from === 'pcp' ? '📋 PCP' : '🏭 Eduardo'}
+                                  {rep.editado && <span className="font-normal italic ml-1">(editado)</span>}
+                                </span>
+                                <span className="font-mono text-[9px]">
+                                  {new Date(rep.timestamp).toLocaleTimeString('pt-BR', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </span>
+                              </div>
+                              <p>{rep.text}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       <div className="flex justify-end items-center gap-2 pt-1 text-[11px]">
                         <button
@@ -865,7 +952,7 @@ export default function App() {
                           }}
                           className="px-3 py-1.5 bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-600/30 border border-blue-200 dark:border-blue-500/30 rounded-lg font-bold cursor-pointer transition-colors"
                         >
-                          Abrir Chat da OP
+                          Abrir / Responder Chat
                         </button>
 
                         {msg.arquivada ? (
@@ -901,8 +988,11 @@ export default function App() {
           role={role}
           onSendMsg={handleSendNewMessage}
           onReplyMsg={handleReplyMessage}
-          onArchiveMsg={handleArchiveMessage}
+          onEditMsg={handleEditMessage}
           onDeleteMsg={handleDeleteMessage}
+          onEditReply={handleEditReply}
+          onDeleteReply={handleDeleteReply}
+          onArchiveMsg={handleArchiveMessage}
           onClose={() => setActiveChatOrder(null)}
         />
       )}
