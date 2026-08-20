@@ -13,6 +13,9 @@ import {
   RefreshCw,
   Plus,
   FileSpreadsheet,
+  ArrowUpDown,
+  SlidersHorizontal,
+  RotateCcw,
 } from 'lucide-react';
 import { ChatMessage, OrderStatusKey, ProductionOrder, Role, CategoryKey } from './types';
 import { CATEGORIES, MANUAL_STATUS, S_ORDER, STATUS_CONFIG } from './constants';
@@ -56,6 +59,9 @@ export default function App() {
   const [messageSubTab, setMessageSubTab] = useState<'ativos' | 'arquivados'>('ativos');
   const [msgSearchQuery, setMsgSearchQuery] = useState('');
   const [msgPeriodFilter, setMsgPeriodFilter] = useState<'todos' | 'hoje' | '7dias' | '30dias'>('todos');
+  const [msgSortOrder, setMsgSortOrder] = useState<'recentes' | 'antigos' | 'recente_interacao'>('recentes');
+  const [msgSenderFilter, setMsgSenderFilter] = useState<'todos' | 'pcp' | 'producao'>('todos');
+  const [msgResponseFilter, setMsgResponseFilter] = useState<'todos' | 'respondidos' | 'pendentes'>('todos');
 
   // Modals
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -740,103 +746,277 @@ export default function App() {
                 </div>
               </div>
 
-              {/* OP Search and Period Filters for Messages */}
-              <div className="flex flex-col sm:flex-row items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                <div className="relative flex-1 w-full">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={msgSearchQuery}
-                    onChange={(e) => setMsgSearchQuery(e.target.value)}
-                    placeholder="Filtrar avisos por OP (ex: 018500), descrição ou conteúdo..."
-                    className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  {msgSearchQuery && (
+              {/* OP Search and Filter Toolbar for Messages */}
+              <div className="space-y-2.5 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                  <div className="relative flex-1 w-full">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={msgSearchQuery}
+                      onChange={(e) => setMsgSearchQuery(e.target.value)}
+                      placeholder="Filtrar avisos por OP (ex: 018500), descrição ou conteúdo..."
+                      className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    {msgSearchQuery && (
+                      <button
+                        onClick={() => setMsgSearchQuery('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Sort Order Selector */}
+                  <div className="flex items-center gap-1.5 w-full sm:w-auto bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 px-1.5 flex items-center gap-1">
+                      <ArrowUpDown className="w-3 h-3 text-blue-500" />
+                      <span>Ordem:</span>
+                    </span>
                     <button
-                      onClick={() => setMsgSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs"
+                      onClick={() => setMsgSortOrder('recentes')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap cursor-pointer transition-all ${
+                        msgSortOrder === 'recentes'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                      title="Exibir os avisos mais recentes primeiro"
                     >
-                      ✕
+                      Mais Recentes
                     </button>
-                  )}
+                    <button
+                      onClick={() => setMsgSortOrder('antigos')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap cursor-pointer transition-all ${
+                        msgSortOrder === 'antigos'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                      title="Exibir os avisos mais antigos primeiro"
+                    >
+                      Mais Antigos
+                    </button>
+                    <button
+                      onClick={() => setMsgSortOrder('recente_interacao')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap cursor-pointer transition-all ${
+                        msgSortOrder === 'recente_interacao'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                      title="Ordenar pela última resposta ou atualização"
+                    >
+                      Última Atividade
+                    </button>
+                  </div>
                 </div>
 
-                {/* Period selector */}
-                <div className="flex items-center gap-1 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-                  <button
-                    onClick={() => setMsgPeriodFilter('todos')}
-                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap cursor-pointer transition-all ${
-                      msgPeriodFilter === 'todos'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    Todo o Período
-                  </button>
-                  <button
-                    onClick={() => setMsgPeriodFilter('hoje')}
-                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap cursor-pointer transition-all ${
-                      msgPeriodFilter === 'hoje'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    Hoje
-                  </button>
-                  <button
-                    onClick={() => setMsgPeriodFilter('7dias')}
-                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap cursor-pointer transition-all ${
-                      msgPeriodFilter === '7dias'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    Últimos 7 dias
-                  </button>
-                  <button
-                    onClick={() => setMsgPeriodFilter('30dias')}
-                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap cursor-pointer transition-all ${
-                      msgPeriodFilter === '30dias'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    Últimos 30 dias
-                  </button>
+                {/* Sub-Filters Row: Remetente, Respostas, Período */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Sender Filter */}
+                    <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 text-[11px]">
+                      <span className="text-slate-500 font-bold px-1">Origem:</span>
+                      <button
+                        onClick={() => setMsgSenderFilter('todos')}
+                        className={`px-2 py-0.5 rounded-lg font-bold cursor-pointer transition-all ${
+                          msgSenderFilter === 'todos'
+                            ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        Todas
+                      </button>
+                      <button
+                        onClick={() => setMsgSenderFilter('pcp')}
+                        className={`px-2 py-0.5 rounded-lg font-bold cursor-pointer transition-all ${
+                          msgSenderFilter === 'pcp'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-slate-500 hover:text-blue-600 dark:hover:text-blue-400'
+                        }`}
+                      >
+                        📋 PCP
+                      </button>
+                      <button
+                        onClick={() => setMsgSenderFilter('producao')}
+                        className={`px-2 py-0.5 rounded-lg font-bold cursor-pointer transition-all ${
+                          msgSenderFilter === 'producao'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400'
+                        }`}
+                      >
+                        🏭 Produção
+                      </button>
+                    </div>
+
+                    {/* Response Filter */}
+                    <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 text-[11px]">
+                      <span className="text-slate-500 font-bold px-1">Status:</span>
+                      <button
+                        onClick={() => setMsgResponseFilter('todos')}
+                        className={`px-2 py-0.5 rounded-lg font-bold cursor-pointer transition-all ${
+                          msgResponseFilter === 'todos'
+                            ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        Todos
+                      </button>
+                      <button
+                        onClick={() => setMsgResponseFilter('respondidos')}
+                        className={`px-2 py-0.5 rounded-lg font-bold cursor-pointer transition-all ${
+                          msgResponseFilter === 'respondidos'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        💬 Com Resposta
+                      </button>
+                      <button
+                        onClick={() => setMsgResponseFilter('pendentes')}
+                        className={`px-2 py-0.5 rounded-lg font-bold cursor-pointer transition-all ${
+                          msgResponseFilter === 'pendentes'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        ⏳ Sem Resposta
+                      </button>
+                    </div>
+
+                    {/* Period Selector */}
+                    <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 text-[11px]">
+                      <span className="text-slate-500 font-bold px-1">Período:</span>
+                      <button
+                        onClick={() => setMsgPeriodFilter('todos')}
+                        className={`px-2 py-0.5 rounded-lg font-bold cursor-pointer transition-all ${
+                          msgPeriodFilter === 'todos'
+                            ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        Tudo
+                      </button>
+                      <button
+                        onClick={() => setMsgPeriodFilter('hoje')}
+                        className={`px-2 py-0.5 rounded-lg font-bold cursor-pointer transition-all ${
+                          msgPeriodFilter === 'hoje'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        Hoje
+                      </button>
+                      <button
+                        onClick={() => setMsgPeriodFilter('7dias')}
+                        className={`px-2 py-0.5 rounded-lg font-bold cursor-pointer transition-all ${
+                          msgPeriodFilter === '7dias'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        7 dias
+                      </button>
+                      <button
+                        onClick={() => setMsgPeriodFilter('30dias')}
+                        className={`px-2 py-0.5 rounded-lg font-bold cursor-pointer transition-all ${
+                          msgPeriodFilter === '30dias'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        30 dias
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Reset Filters button */}
+                  {(msgSearchQuery ||
+                    msgPeriodFilter !== 'todos' ||
+                    msgSenderFilter !== 'todos' ||
+                    msgResponseFilter !== 'todos' ||
+                    msgSortOrder !== 'recentes') && (
+                    <button
+                      onClick={() => {
+                        setMsgSearchQuery('');
+                        setMsgPeriodFilter('todos');
+                        setMsgSenderFilter('todos');
+                        setMsgResponseFilter('todos');
+                        setMsgSortOrder('recentes');
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Limpar todos os filtros"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Limpar Filtros</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
 
             {(() => {
-              const displayMessages = messages.filter((m) => {
-                const isTabMatch = messageSubTab === 'arquivados' ? m.arquivada : !m.arquivada;
-                if (!isTabMatch) return false;
+              const displayMessages = messages
+                .filter((m) => {
+                  const isTabMatch = messageSubTab === 'arquivados' ? m.arquivada : !m.arquivada;
+                  if (!isTabMatch) return false;
 
-                if (msgSearchQuery.trim()) {
-                  const q = msgSearchQuery.toLowerCase().trim();
-                  const matchesOp = m.orderNumero.toLowerCase().includes(q);
-                  const matchesDesc = m.orderDesc.toLowerCase().includes(q);
-                  const matchesText = m.text.toLowerCase().includes(q);
-                  if (!matchesOp && !matchesDesc && !matchesText) return false;
-                }
+                  // Sender filter
+                  if (msgSenderFilter === 'pcp' && m.from !== 'pcp') return false;
+                  if (msgSenderFilter === 'producao' && m.from !== 'producao') return false;
 
-                if (msgPeriodFilter !== 'todos') {
-                  const msgDate = new Date(m.timestamp).getTime();
-                  const now = Date.now();
-                  if (msgPeriodFilter === 'hoje') {
-                    const startOfToday = new Date().setHours(0, 0, 0, 0);
-                    if (msgDate < startOfToday) return false;
-                  } else if (msgPeriodFilter === '7dias') {
-                    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-                    if (msgDate < sevenDaysAgo) return false;
-                  } else if (msgPeriodFilter === '30dias') {
-                    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-                    if (msgDate < thirtyDaysAgo) return false;
+                  // Response status filter
+                  const hasReplies = Boolean(m.replies && m.replies.length > 0);
+                  if (msgResponseFilter === 'respondidos' && !hasReplies) return false;
+                  if (msgResponseFilter === 'pendentes' && hasReplies) return false;
+
+                  // Search query
+                  if (msgSearchQuery.trim()) {
+                    const q = msgSearchQuery.toLowerCase().trim();
+                    const matchesOp = m.orderNumero.toLowerCase().includes(q);
+                    const matchesDesc = m.orderDesc.toLowerCase().includes(q);
+                    const matchesText = m.text.toLowerCase().includes(q);
+                    const matchesReplies = (m.replies || []).some((r) =>
+                      r.text.toLowerCase().includes(q)
+                    );
+                    if (!matchesOp && !matchesDesc && !matchesText && !matchesReplies) return false;
                   }
-                }
 
-                return true;
-              });
+                  // Period filter
+                  if (msgPeriodFilter !== 'todos') {
+                    const msgDate = new Date(m.timestamp).getTime();
+                    const now = Date.now();
+                    if (msgPeriodFilter === 'hoje') {
+                      const startOfToday = new Date().setHours(0, 0, 0, 0);
+                      if (msgDate < startOfToday) return false;
+                    } else if (msgPeriodFilter === '7dias') {
+                      const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+                      if (msgDate < sevenDaysAgo) return false;
+                    } else if (msgPeriodFilter === '30dias') {
+                      const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+                      if (msgDate < thirtyDaysAgo) return false;
+                    }
+                  }
+
+                  return true;
+                })
+                .sort((a, b) => {
+                  if (msgSortOrder === 'antigos') {
+                    return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+                  }
+                  if (msgSortOrder === 'recente_interacao') {
+                    const latestA = Math.max(
+                      new Date(a.timestamp).getTime(),
+                      ...(a.replies || []).map((r) => new Date(r.timestamp).getTime())
+                    );
+                    const latestB = Math.max(
+                      new Date(b.timestamp).getTime(),
+                      ...(b.replies || []).map((r) => new Date(r.timestamp).getTime())
+                    );
+                    return latestB - latestA;
+                  }
+                  // Default: Mais recentes primeiro (descendente)
+                  return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+                });
 
               if (displayMessages.length === 0) {
                 return (
