@@ -17,8 +17,9 @@ import {
   Boxes,
   Send,
   Sparkles,
+  ArrowRight,
 } from 'lucide-react';
-import { OrderStatusKey, ProductionOrder, Role } from '../types';
+import { ChatMessage, OrderStatusKey, ProductionOrder, Role } from '../types';
 import { COMMON_DELAY_REASONS, MANUAL_STATUS, STATUS_CONFIG } from '../constants';
 import { daysInfo, formatQuantity, detectUnidade } from '../utils/nomusParser';
 
@@ -26,6 +27,7 @@ interface OrderCardProps {
   order: ProductionOrder;
   role: Role;
   unreadCount?: number;
+  orderMessages?: ChatMessage[];
   darkMode?: boolean;
   onStatusChange: (id: string, newStatus: OrderStatusKey, motivo?: string) => void;
   onToggleFavorite: (id: string) => void;
@@ -38,6 +40,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   order,
   role,
   unreadCount = 0,
+  orderMessages = [],
   darkMode = true,
   onStatusChange,
   onToggleFavorite,
@@ -54,6 +57,39 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   const deadline = daysInfo(order.data_entrega);
 
   const isOverdue = order.status === 'atrasada' || (deadline?.isOverdue ?? false);
+
+  // Extract all messages and replies to find the latest activity
+  const allInteractions = (orderMessages || []).flatMap((m) => {
+    const list: Array<{
+      id: string;
+      from: Role;
+      text: string;
+      timestamp: string;
+      isReply: boolean;
+    }> = [
+      {
+        id: m.id,
+        from: m.from,
+        text: m.text,
+        timestamp: m.timestamp,
+        isReply: false,
+      },
+    ];
+    if (m.replies && m.replies.length > 0) {
+      m.replies.forEach((r) => {
+        list.push({
+          id: r.id,
+          from: r.from,
+          text: r.text,
+          timestamp: r.timestamp,
+          isReply: true,
+        });
+      });
+    }
+    return list;
+  }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  const latestInteraction = allInteractions.length > 0 ? allInteractions[allInteractions.length - 1] : null;
 
   const handleSaveMotivo = () => {
     if (!motivoInput.trim()) return;
@@ -198,6 +234,60 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             </div>
           </div>
         )}
+
+        {/* Latest Chat / Response Notice on the Card */}
+        {latestInteraction && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenChat(order);
+            }}
+            className="mt-2.5 p-2.5 rounded-xl bg-blue-50/80 dark:bg-slate-950/90 border border-blue-200 dark:border-blue-800/70 hover:border-blue-400 dark:hover:border-blue-500 transition-all cursor-pointer flex items-start gap-2 text-xs shadow-xs group"
+            title="Clique para abrir conversa completa desta OP"
+          >
+            <div className="p-1 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5">
+              <MessageSquare className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between text-[10px] mb-0.5">
+                <div className="flex items-center gap-1.5 font-bold">
+                  {latestInteraction.from === 'pcp' ? (
+                    <span className="text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/60 px-1.5 py-0.5 rounded font-black">
+                      📋 PCP:
+                    </span>
+                  ) : (
+                    <span className="text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded font-black">
+                      🏭 Eduardo (Produção):
+                    </span>
+                  )}
+                  {latestInteraction.isReply && (
+                    <span className="text-[9px] text-slate-500 dark:text-slate-400 font-normal">
+                      (resposta)
+                    </span>
+                  )}
+                </div>
+                <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500">
+                  {new Date(latestInteraction.timestamp).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </div>
+              <p className="text-slate-800 dark:text-slate-200 font-medium line-clamp-2 leading-tight">
+                {latestInteraction.text}
+              </p>
+            </div>
+            {unreadCount > 0 ? (
+              <span className="px-1.5 py-0.5 text-[9px] font-black bg-rose-500 text-white rounded-full shrink-0 animate-pulse">
+                {unreadCount} novo{unreadCount > 1 ? 's' : ''}
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform self-center shrink-0">
+                <ArrowRight className="w-3.5 h-3.5" />
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Expanded Controls & Status Options */}
@@ -315,10 +405,13 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
             <button
               onClick={() => onOpenChat(order)}
-              className="flex-1 py-2 px-3 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="flex-1 py-2 px-3 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer text-xs"
             >
-              <MessageSquare className="w-4 h-4" />
-              <span>Abrir Chat / Avisos da OP ({unreadCount > 0 ? `${unreadCount} novos` : '0'})</span>
+              <MessageSquare className="w-4 h-4 text-blue-400" />
+              <span>
+                Abrir Chat / Conversa da OP ({allInteractions.length > 0 ? `${allInteractions.length} msgs` : '0'}
+                {unreadCount > 0 ? ` · ${unreadCount} novas` : ''})
+              </span>
             </button>
           </div>
         </div>

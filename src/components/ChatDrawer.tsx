@@ -335,7 +335,15 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
                           >
                             <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400">
                               <span className="flex items-center gap-1">
-                                <span>{r.from === 'pcp' ? '📋 PCP' : '🏭 Eduardo'}</span>
+                                {r.from === 'pcp' ? (
+                                  <span className="text-blue-700 dark:text-blue-300 font-extrabold bg-blue-100 dark:bg-blue-900/60 px-1.5 py-0.5 rounded">
+                                    📋 PCP:
+                                  </span>
+                                ) : (
+                                  <span className="text-emerald-700 dark:text-emerald-300 font-extrabold bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded">
+                                    🏭 Eduardo (Produção):
+                                  </span>
+                                )}
                                 {r.editado && (
                                   <span className="text-[9px] font-normal italic text-slate-400 dark:text-slate-500">
                                     (editado)

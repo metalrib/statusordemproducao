@@ -16,6 +16,7 @@ import {
   ArrowUpDown,
   SlidersHorizontal,
   RotateCcw,
+  Send,
 } from 'lucide-react';
 import { ChatMessage, OrderStatusKey, ProductionOrder, Role, CategoryKey } from './types';
 import { CATEGORIES, MANUAL_STATUS, S_ORDER, STATUS_CONFIG } from './constants';
@@ -62,6 +63,7 @@ export default function App() {
   const [msgSortOrder, setMsgSortOrder] = useState<'recentes' | 'antigos' | 'recente_interacao'>('recentes');
   const [msgSenderFilter, setMsgSenderFilter] = useState<'todos' | 'pcp' | 'producao'>('todos');
   const [msgResponseFilter, setMsgResponseFilter] = useState<'todos' | 'respondidos' | 'pendentes'>('todos');
+  const [centralReplyInputs, setCentralReplyInputs] = useState<Record<string, string>>({});
 
   // Modals
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -360,6 +362,49 @@ export default function App() {
     }
   };
 
+  const handleSendCentralReply = (group: {
+    orderNumero: string;
+    orderId: string;
+    orderDesc: string;
+    messages: ChatMessage[];
+  }) => {
+    const text = (centralReplyInputs[group.orderNumero] || '').trim();
+    if (!text) return;
+
+    const latestMsg = group.messages[group.messages.length - 1];
+    if (latestMsg) {
+      handleReplyMessage(latestMsg.id, text);
+    } else {
+      const newMsg: ChatMessage = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        orderId: group.orderId,
+        orderNumero: group.orderNumero,
+        orderDesc: group.orderDesc,
+        from: role,
+        text: text,
+        timestamp: new Date().toISOString(),
+        readByPcp: role === 'pcp',
+        readByProducao: role === 'producao',
+        replies: [],
+      };
+      handleSendNewMessage(newMsg);
+    }
+
+    setCentralReplyInputs((prev) => ({ ...prev, [group.orderNumero]: '' }));
+  };
+
+  const handleArchiveGroup = (groupMessages: ChatMessage[]) => {
+    groupMessages.forEach((m) => {
+      handleArchiveMessage(m.id);
+    });
+  };
+
+  const handleUnarchiveGroup = (groupMessages: ChatMessage[]) => {
+    groupMessages.forEach((m) => {
+      handleUnarchiveMessage(m.id);
+    });
+  };
+
   // Unread Messages Calculation
   const unreadMap: Record<string, number> = {};
   messages.forEach((m) => {
@@ -653,19 +698,30 @@ export default function App() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
-                {filteredOrders.map((order) => (
-                  <OrderCard
-                    key={order.id}
-                    order={order}
-                    role={role}
-                    darkMode={darkMode}
-                    unreadCount={unreadMap[order.numero] || 0}
-                    onStatusChange={handleStatusChange}
-                    onToggleFavorite={handleToggleFavorite}
-                    onTogglePaused={handleTogglePaused}
-                    onOpenChat={handleOpenChat}
-                  />
-                ))}
+                {filteredOrders.map((order) => {
+                  const orderMsgs = messages.filter(
+                    (m) =>
+                      m.orderId === order.id ||
+                      m.orderNumero === order.numero ||
+                      (m.orderNumero || '').replace(/\s+/g, '').toLowerCase() ===
+                        (order.numero || '').replace(/\s+/g, '').toLowerCase()
+                  );
+
+                  return (
+                    <OrderCard
+                      key={order.id}
+                      order={order}
+                      role={role}
+                      darkMode={darkMode}
+                      unreadCount={unreadMap[order.numero] || 0}
+                      orderMessages={orderMsgs}
+                      onStatusChange={handleStatusChange}
+                      onToggleFavorite={handleToggleFavorite}
+                      onTogglePaused={handleTogglePaused}
+                      onOpenChat={handleOpenChat}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>
@@ -678,6 +734,7 @@ export default function App() {
             role={role}
             darkMode={darkMode}
             unreadMap={unreadMap}
+            messages={messages}
             onStatusChange={handleStatusChange}
             onToggleFavorite={handleToggleFavorite}
             onTogglePaused={handleTogglePaused}
@@ -955,45 +1012,151 @@ export default function App() {
             </div>
 
             {(() => {
-              const displayMessages = messages
-                .filter((m) => {
-                  const isTabMatch = messageSubTab === 'arquivados' ? m.arquivada : !m.arquivada;
+              // Group messages by OP so all related notices and replies are presented in a unified conversation
+              interface MessageGroup {
+                key: string;
+                orderNumero: string;
+                orderId: string;
+                orderDesc: string;
+                orderObj?: ProductionOrder;
+                messages: ChatMessage[];
+                allTimeline: Array<{
+                  id: string;
+                  parentMsgId: string;
+                  from: Role;
+                  text: string;
+                  timestamp: string;
+                  isReply: boolean;
+                  editado?: boolean;
+                }>;
+                latestTimestamp: string;
+                isAllArchived: boolean;
+                hasUnread: boolean;
+              }
+
+              const groupedMap = new Map<string, MessageGroup>();
+
+              messages.forEach((m) => {
+                const normKey = (m.orderNumero || '').trim() || m.orderId || 'SEM_OP';
+                let group = groupedMap.get(normKey);
+                if (!group) {
+                  const matchedOrder = orders.find(
+                    (o) =>
+                      o.numero === m.orderNumero ||
+                      o.id === m.orderId ||
+                      (o.numero || '').replace(/\s+/g, '').toLowerCase() ===
+                        (m.orderNumero || '').replace(/\s+/g, '').toLowerCase()
+                  );
+                  group = {
+                    key: normKey,
+                    orderNumero: m.orderNumero || 'OP Sem Número',
+                    orderId: m.orderId || matchedOrder?.id || normKey,
+                    orderDesc: m.orderDesc || matchedOrder?.descricao || '',
+                    orderObj: matchedOrder,
+                    messages: [],
+                    allTimeline: [],
+                    latestTimestamp: m.timestamp,
+                    isAllArchived: true,
+                    hasUnread: false,
+                  };
+                  groupedMap.set(normKey, group);
+                }
+
+                group.messages.push(m);
+                if (!m.arquivada) group.isAllArchived = false;
+
+                const isUnread = role === 'pcp' ? !m.readByPcp : !m.readByProducao;
+                if (isUnread && !m.arquivada) group.hasUnread = true;
+
+                // Add parent message to timeline
+                group.allTimeline.push({
+                  id: m.id,
+                  parentMsgId: m.id,
+                  from: m.from,
+                  text: m.text,
+                  timestamp: m.timestamp,
+                  isReply: false,
+                  editado: m.editado,
+                });
+
+                if (new Date(m.timestamp).getTime() > new Date(group.latestTimestamp).getTime()) {
+                  group.latestTimestamp = m.timestamp;
+                }
+
+                // Add replies to timeline
+                if (m.replies && m.replies.length > 0) {
+                  m.replies.forEach((r) => {
+                    group!.allTimeline.push({
+                      id: r.id,
+                      parentMsgId: m.id,
+                      from: r.from,
+                      text: r.text,
+                      timestamp: r.timestamp,
+                      isReply: true,
+                      editado: r.editado,
+                    });
+
+                    if (new Date(r.timestamp).getTime() > new Date(group!.latestTimestamp).getTime()) {
+                      group!.latestTimestamp = r.timestamp;
+                    }
+                  });
+                }
+              });
+
+              // Convert to array and filter/sort
+              const allGroups = Array.from(groupedMap.values()).map((g) => {
+                g.allTimeline.sort(
+                  (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                );
+                return g;
+              });
+
+              const filteredGroups = allGroups
+                .filter((g) => {
+                  // Sub-tab: Ativos vs Arquivados
+                  const isTabMatch = messageSubTab === 'arquivados' ? g.isAllArchived : !g.isAllArchived;
                   if (!isTabMatch) return false;
 
-                  // Sender filter
-                  if (msgSenderFilter === 'pcp' && m.from !== 'pcp') return false;
-                  if (msgSenderFilter === 'producao' && m.from !== 'producao') return false;
+                  // Sender filter: check if any message in timeline came from this sender
+                  if (msgSenderFilter === 'pcp' && !g.allTimeline.some((t) => t.from === 'pcp')) {
+                    return false;
+                  }
+                  if (
+                    msgSenderFilter === 'producao' &&
+                    !g.allTimeline.some((t) => t.from === 'producao')
+                  ) {
+                    return false;
+                  }
 
                   // Response status filter
-                  const hasReplies = Boolean(m.replies && m.replies.length > 0);
-                  if (msgResponseFilter === 'respondidos' && !hasReplies) return false;
-                  if (msgResponseFilter === 'pendentes' && hasReplies) return false;
+                  const hasMultipleInteractions =
+                    g.allTimeline.length > 1 ||
+                    g.messages.some((m) => m.replies && m.replies.length > 0);
+                  if (msgResponseFilter === 'respondidos' && !hasMultipleInteractions) return false;
+                  if (msgResponseFilter === 'pendentes' && hasMultipleInteractions) return false;
 
                   // Search query
                   if (msgSearchQuery.trim()) {
                     const q = msgSearchQuery.toLowerCase().trim();
-                    const matchesOp = m.orderNumero.toLowerCase().includes(q);
-                    const matchesDesc = m.orderDesc.toLowerCase().includes(q);
-                    const matchesText = m.text.toLowerCase().includes(q);
-                    const matchesReplies = (m.replies || []).some((r) =>
-                      r.text.toLowerCase().includes(q)
-                    );
-                    if (!matchesOp && !matchesDesc && !matchesText && !matchesReplies) return false;
+                    const matchesOp = g.orderNumero.toLowerCase().includes(q);
+                    const matchesDesc = g.orderDesc.toLowerCase().includes(q);
+                    const matchesText = g.allTimeline.some((t) => t.text.toLowerCase().includes(q));
+                    if (!matchesOp && !matchesDesc && !matchesText) return false;
                   }
 
                   // Period filter
                   if (msgPeriodFilter !== 'todos') {
-                    const msgDate = new Date(m.timestamp).getTime();
+                    const latestDate = new Date(g.latestTimestamp).getTime();
                     const now = Date.now();
                     if (msgPeriodFilter === 'hoje') {
                       const startOfToday = new Date().setHours(0, 0, 0, 0);
-                      if (msgDate < startOfToday) return false;
+                      if (latestDate < startOfToday) return false;
                     } else if (msgPeriodFilter === '7dias') {
                       const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-                      if (msgDate < sevenDaysAgo) return false;
+                      if (latestDate < sevenDaysAgo) return false;
                     } else if (msgPeriodFilter === '30dias') {
                       const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-                      if (msgDate < thirtyDaysAgo) return false;
+                      if (latestDate < thirtyDaysAgo) return false;
                     }
                   }
 
@@ -1001,158 +1164,214 @@ export default function App() {
                 })
                 .sort((a, b) => {
                   if (msgSortOrder === 'antigos') {
-                    return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+                    return new Date(a.latestTimestamp).getTime() - new Date(b.latestTimestamp).getTime();
                   }
-                  if (msgSortOrder === 'recente_interacao') {
-                    const latestA = Math.max(
-                      new Date(a.timestamp).getTime(),
-                      ...(a.replies || []).map((r) => new Date(r.timestamp).getTime())
-                    );
-                    const latestB = Math.max(
-                      new Date(b.timestamp).getTime(),
-                      ...(b.replies || []).map((r) => new Date(r.timestamp).getTime())
-                    );
-                    return latestB - latestA;
-                  }
-                  // Default: Mais recentes primeiro (descendente)
-                  return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+                  // Default & 'recente_interacao': Mais recentes primeiro (descendente)
+                  return new Date(b.latestTimestamp).getTime() - new Date(a.latestTimestamp).getTime();
                 });
 
-              if (displayMessages.length === 0) {
+              if (filteredGroups.length === 0) {
                 return (
                   <div className="py-16 text-center bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-500 dark:text-slate-400 text-xs space-y-1">
                     <p className="font-bold">
                       {msgSearchQuery || msgPeriodFilter !== 'todos'
-                        ? 'Nenhum aviso encontrado para os filtros aplicados.'
+                        ? 'Nenhum aviso ou conversa encontrada para os filtros aplicados.'
                         : messageSubTab === 'arquivados'
                         ? 'Nenhum aviso arquivado no momento.'
-                        : 'Nenhum aviso ou conversa aberta em andamento.'}
+                        : 'Nenhum aviso ou conversa em andamento.'}
                     </p>
                     <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                      {(msgSearchQuery || msgPeriodFilter !== 'todos')
+                      {msgSearchQuery || msgPeriodFilter !== 'todos'
                         ? 'Tente alterar a busca de OP ou limpar o filtro de período.'
-                        : 'Para iniciar um aviso em uma OP, abra a lista de OPs e clique em "Abrir Chat".'}
+                        : 'Para iniciar um aviso em uma OP, acesse a Lista de OPs e clique em "Abrir Chat da OP".'}
                     </p>
                   </div>
                 );
               }
 
               return (
-                <div className="space-y-3">
-                  {displayMessages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-2 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm"
-                    >
-                      <div className="flex items-center justify-between text-xs flex-wrap gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800/60">
-                            {msg.orderNumero}
-                          </span>
-                          <span className="text-slate-700 dark:text-slate-300 font-semibold truncate max-w-xs">
-                            {msg.orderDesc}
-                          </span>
-                          {msg.arquivada && (
-                            <span className="px-2 py-0.5 text-[10px] bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded font-bold">
-                              Arquivado
+                <div className="space-y-4">
+                  {filteredGroups.map((group) => {
+                    const statusInfo = group.orderObj
+                      ? STATUS_CONFIG[group.orderObj.status] || STATUS_CONFIG.planejada
+                      : null;
+
+                    return (
+                      <div
+                        key={group.key}
+                        className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3 hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-sm"
+                      >
+                        {/* OP Header in Central de Avisos */}
+                        <div className="flex items-center justify-between text-xs flex-wrap gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800/60 text-xs">
+                              {group.orderNumero}
                             </span>
+                            <span className="text-slate-800 dark:text-slate-200 font-bold max-w-sm truncate">
+                              {group.orderDesc}
+                            </span>
+                            {statusInfo && (
+                              <span
+                                className="px-2 py-0.5 rounded-full text-[10px] font-extrabold"
+                                style={{
+                                  backgroundColor: `${statusInfo.color}20`,
+                                  color: statusInfo.color,
+                                }}
+                              >
+                                {statusInfo.icon} {statusInfo.label}
+                              </span>
+                            )}
+                            {group.isAllArchived && (
+                              <span className="px-2 py-0.5 text-[10px] bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 rounded font-bold">
+                                Arquivado
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                              Última atividade:{' '}
+                              {new Date(group.latestTimestamp).toLocaleString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Chronological Conversation Timeline */}
+                        <div className="space-y-2">
+                          {group.allTimeline.map((item) => {
+                            const isPcp = item.from === 'pcp';
+                            return (
+                              <div
+                                key={item.id}
+                                className={`p-3 rounded-xl border text-xs space-y-1 transition-all ${
+                                  isPcp
+                                    ? 'bg-blue-50/90 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60 text-slate-800 dark:text-slate-100'
+                                    : 'bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-slate-800 dark:text-slate-100'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between text-[11px] font-bold">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {isPcp ? (
+                                      <span className="text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/70 px-2 py-0.5 rounded-md font-black flex items-center gap-1">
+                                        <span>📋 PCP:</span>
+                                      </span>
+                                    ) : (
+                                      <span className="text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/70 px-2 py-0.5 rounded-md font-black flex items-center gap-1">
+                                        <span>🏭 Eduardo (Produção):</span>
+                                      </span>
+                                    )}
+                                    {item.isReply && (
+                                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                        (resposta)
+                                      </span>
+                                    )}
+                                    {item.editado && (
+                                      <span className="text-[9px] text-slate-400 dark:text-slate-500 font-normal italic">
+                                        (editado)
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                                    {new Date(item.timestamp).toLocaleTimeString('pt-BR', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </span>
+                                </div>
+                                <p className="text-xs leading-relaxed font-medium pl-0.5 whitespace-pre-wrap">
+                                  {item.text}
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Inline Quick Reply Field right on the card */}
+                        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <input
+                            type="text"
+                            value={centralReplyInputs[group.orderNumero] || ''}
+                            onChange={(e) =>
+                              setCentralReplyInputs((prev) => ({
+                                ...prev,
+                                [group.orderNumero]: e.target.value,
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSendCentralReply(group);
+                              }
+                            }}
+                            placeholder={`Responder aviso da ${group.orderNumero} como ${
+                              role === 'pcp' ? '📋 PCP' : '🏭 Eduardo (Produção)'
+                            }...`}
+                            className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <button
+                            onClick={() => handleSendCentralReply(group)}
+                            disabled={!centralReplyInputs[group.orderNumero]?.trim()}
+                            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors shrink-0"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>Responder</span>
+                          </button>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex justify-end items-center gap-2 pt-1 text-[11px]">
+                          <button
+                            onClick={() => {
+                              const target =
+                                group.orderObj || {
+                                  id: group.orderId,
+                                  numero: group.orderNumero,
+                                  descricao: group.orderDesc || '',
+                                  codigo: '',
+                                  lote: '',
+                                  observacao: '',
+                                  data_entrega: '',
+                                  status: 'planejada' as const,
+                                  status_nomus: 'Planejada',
+                                  quantidade: 1,
+                                  qtde_produzida: 0,
+                                  categoria: 'outros' as const,
+                                  motivo_atraso: '',
+                                  favorito: false,
+                                  pausada: false,
+                                };
+                              handleOpenChat(target);
+                            }}
+                            className="px-3 py-1.5 bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-600/30 border border-blue-200 dark:border-blue-500/30 rounded-lg font-bold cursor-pointer transition-colors flex items-center gap-1.5"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>
+                              Abrir Chat Completo da OP ({group.allTimeline.length} msgs)
+                            </span>
+                          </button>
+
+                          {group.isAllArchived ? (
+                            <button
+                              onClick={() => handleUnarchiveGroup(group.messages)}
+                              className="px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 rounded-lg font-bold cursor-pointer transition-colors"
+                            >
+                              Desarquivar Conversa
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleArchiveGroup(group.messages)}
+                              className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-600/30 border border-emerald-300 dark:border-emerald-500/30 rounded-lg font-bold cursor-pointer transition-colors"
+                            >
+                              Arquivar Conversa
+                            </button>
                           )}
                         </div>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-                          {new Date(msg.timestamp).toLocaleString('pt-BR')}
-                        </span>
                       </div>
-
-                      <p className="text-xs text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800/80 leading-relaxed">
-                        <strong className="text-blue-700 dark:text-blue-400">
-                          {msg.from === 'pcp' ? '📋 PCP:' : '🏭 Produção:'}
-                        </strong>{' '}
-                        {msg.text}
-                        {msg.editado && (
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal italic ml-1.5">
-                            (editado)
-                          </span>
-                        )}
-                      </p>
-
-                      {/* Display replies if any in central de avisos */}
-                      {msg.replies && msg.replies.length > 0 && (
-                        <div className="pl-3 space-y-1.5 border-l-2 border-slate-200 dark:border-slate-800 py-1">
-                          {msg.replies.map((rep) => (
-                            <div
-                              key={rep.id}
-                              className="p-2 rounded-lg bg-slate-50 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-800 dark:text-slate-200"
-                            >
-                              <div className="flex items-center justify-between text-[10px] text-slate-500 mb-0.5">
-                                <span className="font-bold">
-                                  {rep.from === 'pcp' ? '📋 PCP' : '🏭 Eduardo'}
-                                  {rep.editado && <span className="font-normal italic ml-1">(editado)</span>}
-                                </span>
-                                <span className="font-mono text-[9px]">
-                                  {new Date(rep.timestamp).toLocaleTimeString('pt-BR', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })}
-                                </span>
-                              </div>
-                              <p>{rep.text}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="flex justify-end items-center gap-2 pt-1 text-[11px]">
-                        <button
-                          onClick={() => {
-                            const target =
-                              orders.find(
-                                (o) =>
-                                  o.id === msg.orderId ||
-                                  o.numero === msg.orderNumero ||
-                                  o.id === (msg.orderNumero || '').replace(/\s+/g, '-') ||
-                                  (o.numero || '').replace(/\s+/g, '').toLowerCase() === (msg.orderNumero || '').replace(/\s+/g, '').toLowerCase()
-                              ) || {
-                                id: msg.orderId || (msg.orderNumero || '').replace(/\s+/g, '-'),
-                                numero: msg.orderNumero,
-                                descricao: msg.orderDesc || '',
-                                codigo: '',
-                                lote: '',
-                                observacao: '',
-                                data_entrega: '',
-                                status: 'planejada' as const,
-                                status_nomus: 'Planejada',
-                                quantidade: 1,
-                                qtde_produzida: 0,
-                                categoria: 'outros' as const,
-                                motivo_atraso: '',
-                                favorito: false,
-                                pausada: false,
-                              };
-                            handleOpenChat(target);
-                          }}
-                          className="px-3 py-1.5 bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-600/30 border border-blue-200 dark:border-blue-500/30 rounded-lg font-bold cursor-pointer transition-colors"
-                        >
-                          Abrir / Responder Chat
-                        </button>
-
-                        {msg.arquivada ? (
-                          <button
-                            onClick={() => handleUnarchiveMessage(msg.id)}
-                            className="px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 rounded-lg font-bold cursor-pointer transition-colors"
-                          >
-                            Desarquivar / Reabrir
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleArchiveMessage(msg.id)}
-                            className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-600/30 border border-emerald-300 dark:border-emerald-500/30 rounded-lg font-bold cursor-pointer transition-colors"
-                          >
-                            Arquivar Aviso
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               );
             })()}

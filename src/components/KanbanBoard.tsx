@@ -1,5 +1,5 @@
 import React from 'react';
-import { OrderStatusKey, ProductionOrder, Role } from '../types';
+import { ChatMessage, OrderStatusKey, ProductionOrder, Role } from '../types';
 import { STATUS_CONFIG, S_ORDER } from '../constants';
 import { OrderCard } from './OrderCard';
 
@@ -7,6 +7,7 @@ interface KanbanBoardProps {
   orders: ProductionOrder[];
   role: Role;
   unreadMap: Record<string, number>;
+  messages?: ChatMessage[];
   darkMode?: boolean;
   onStatusChange: (id: string, newStatus: OrderStatusKey, motivo?: string) => void;
   onToggleFavorite: (id: string) => void;
@@ -18,6 +19,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   orders,
   role,
   unreadMap,
+  messages = [],
   darkMode = true,
   onStatusChange,
   onToggleFavorite,
@@ -71,19 +73,30 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   Nenhuma OP nesta coluna
                 </div>
               ) : (
-                colOrders.map((order) => (
-                  <OrderCard
-                    key={order.id}
-                    order={order}
-                    role={role}
-                    darkMode={darkMode}
-                    unreadCount={unreadMap[order.numero] || 0}
-                    onStatusChange={onStatusChange}
-                    onToggleFavorite={onToggleFavorite}
-                    onTogglePaused={onTogglePaused}
-                    onOpenChat={onOpenChat}
-                  />
-                ))
+                colOrders.map((order) => {
+                  const orderMsgs = messages.filter(
+                    (m) =>
+                      m.orderId === order.id ||
+                      m.orderNumero === order.numero ||
+                      (m.orderNumero || '').replace(/\s+/g, '').toLowerCase() ===
+                        (order.numero || '').replace(/\s+/g, '').toLowerCase()
+                  );
+
+                  return (
+                    <OrderCard
+                      key={order.id}
+                      order={order}
+                      role={role}
+                      darkMode={darkMode}
+                      unreadCount={unreadMap[order.numero] || 0}
+                      orderMessages={orderMsgs}
+                      onStatusChange={onStatusChange}
+                      onToggleFavorite={onToggleFavorite}
+                      onTogglePaused={onTogglePaused}
+                      onOpenChat={onOpenChat}
+                    />
+                  );
+                })
               )}
             </div>
           </div>
